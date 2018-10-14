@@ -1,2 +1,3 @@
-# casa-imaging
-Pipeline for imaging HERA data with CASA
+# casa_imaging
+
+Scripts for imaging and calibration in CASA.
