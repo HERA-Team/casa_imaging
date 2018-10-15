@@ -28,7 +28,7 @@ args.add_argument("--radius", type=float, default=5.0, help="Radius in degrees a
 args.add_argument("--min_flux", default=0.0, type=float, help="Minimum flux at 151 MHz of sources to include in model.")
 args.add_argument("--fill_spix", default=None, type=float, help="If spectral index doesn't exist for a source, use this. Default is to omit source.")
 args.add_argument("--image", default=False, action='store_true', help='Make a FITS image of model')
-args.add_argument("--freqs", default=None, type=str, help="Comma-separated values [MHz] for input into np.linspace({},{},{})")
+args.add_argument("--freqs", default=None, type=str, help="Comma-separated values [MHz] for input into np.linspace({},{},{},endpoint=False)")
 args.add_argument("--cell", default='200arcsec', type=str, help="Image pixel size in arcsec")
 args.add_argument("--imsize", default=512, type=int, help="Image side-length in pixels.")
 args.add_argument("--gleamfile", default="gleam.fits", type=str, help="Path to GLEAM point source catalogue FITS file [http://cdsarc.u-strasbg.fr/viz-bin/Cat?VIII/100].")

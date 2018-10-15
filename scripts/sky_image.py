@@ -250,6 +250,18 @@ if __name__ == "__main__":
     # create mfs image
     if args.image_mfs:
         log("...running MFS", type=1)
+        # resolve multi-mask runs
+        Nniter, Nmask, Ncniter, Nthresh = len(args.niter), len(args.mask), len(args.cycleniter), len(args.threshold)
+        if Nniter > 1 or Nmask > 1 or Ncniter > 1 or Nthresh > 1:
+            Nmax = np.max([Nniter, Nmask, Ncniter, Nthresh])
+            if Nniter == 1:
+                args.niter = args.niter * Nmax
+            if Nmask == 1:
+                args.mask = args.mask * Nmax
+            if Ncniter == 1:
+                args.cycleniter = args.cycleniter * Nmax
+            if Nthresh == 1:
+                args.threshold = args.threshold * Nmax
         assert len(args.niter) == len(args.mask) == len(args.cycleniter) == len(args.threshold), "len(niter) must == len(mask) must == len(cycleniter) must == len(threshold)"
 
         # setup parameter dictionaries

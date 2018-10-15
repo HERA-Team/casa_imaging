@@ -15,7 +15,7 @@ def package_files(package_dir, subdirectory):
             paths.append(os.path.join(path, filename))
     return paths
 
-data_files = package_files('casa_imaging', 'data')
+data_files = package_files('casa_imaging', 'data') + package_files('casa_imaging', '../scripts')
 
 setup_args = {
     'name': 'casa_imaging',

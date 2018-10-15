@@ -99,3 +99,13 @@ ENV/
 
 # mypy
 .mypy_cache/
+
+# casa outputs
+casa_imaging/tests/*.log
+casa_imaging/data/*.log
+scripts/*.log
+casa_imaging/tests/*.last
+casa_imaging/data/*.last
+
+
+

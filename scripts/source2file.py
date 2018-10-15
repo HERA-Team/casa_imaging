@@ -13,7 +13,7 @@ import argparse
 from astropy.time import Time
 from pyuvdata import UVData
 import sys
-import coord_convs as cc
+import casa_imaging.coord_convs as cc
 
 ap = argparse.ArgumentParser(description='')
 

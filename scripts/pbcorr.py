@@ -218,7 +218,11 @@ if __name__ == "__main__":
 
         # change polarization to interpolated beam pols
         head["CRVAL{}".format(stok_ax)] = pol_arr[0]
-        head["CDELT{}".format(stok_ax)] = np.diff(pol_arr)[0]
+        if len(pol_arr) == 1:
+            step = 1
+        else:
+            step = np.diff(pol_arr)[0]
+        head["CDELT{}".format(stok_ax)] = step
         head["NAXIS{}".format(stok_ax)] = len(pol_arr)
 
         echo("...saving {}".format(output_fname))
