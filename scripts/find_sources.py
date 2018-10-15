@@ -99,7 +99,7 @@ if __name__ == "__main__":
                 trim = True
 
         # subtract from model
-        utils.subtract_beam(model, rest_beam*peak*(1-1e-5), pxl, subtract=True, inplace=True)
+        utils.subtract_beam(model, rest_beam, pxl, subtract=True, inplace=True)
 
         if not trim:
             # add to mask
@@ -108,16 +108,16 @@ if __name__ == "__main__":
             # append
             source_peaks.append(peak)
             source_pixels.append(pxl)
+            i += 1
 
         # get new peak
         peak = np.nanmax(model)
-        i += 1
 
     source_peaks = np.array(source_peaks)
-    source_pixels = np.array(source_pixels)
+    source_pixels = np.array(source_pixels)[:, ::-1]
 
     # get ra and dec of pixels
-    source_coords = mwcs.all_pix2world(source_pixels[:, ::-1], 0)
+    source_coords = mwcs.all_pix2world(source_pixels, 0)
 
     # write to file
     np.savetxt(outfile, np.concatenate([source_pixels, source_coords, source_peaks[:, None]], axis=1),

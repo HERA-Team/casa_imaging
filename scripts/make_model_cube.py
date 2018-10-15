@@ -35,12 +35,13 @@ args = argparse.ArgumentParser(description="Turn a series of MFS images into a s
 args.add_argument("imfiles", type=str, nargs='*', help="List of input MFS FITS images of fixed cell, imsize and polarization parameters. cell and imsize must be equal across both RA and Dec")
 args.add_argument("--cubefile", type=str, help="Path to a proper CASA spectral cube FITS file with same cell, imsize and polarization parameters as input MFS images.")
 args.add_argument("--sourcefile", type=str, help="File containing source locations to extract from MFS images. This should " \
-                                                 "contain two tab-delimited columns holding RA and Dec respectively in degrees, " \
-                                                 "and should be sorted by descending flux density.")
+                                                 "contain 4 tab-delimited columns holding RA and Dec respectively in pixels and then degrees, " \
+                                                 "and should be sorted by descending flux density. See find_sources.py for details.")
 args.add_argument("--outfname", type=str, default=None, help="Output FITS filename of spectral cube model: Default is input cubefile.")
 args.add_argument("--overwrite", default=False, action='store_true', help="overwrite output file.")
 args.add_argument("--makeplots", default=False, action='store_true', help='Make plots of sources and their spectra.')
 # Analysis Arguments
+args.add_argument("--peak_level", default=0.5, type=float, help="PSF level within which to search for peak flux of source.")
 args.add_argument("--rb_Npix", default=41, type=int, help="Size of restoring beam cut-out in pixels, to use in source subtraction.")
 args.add_argument("--fit_pl", default=False, action='store_true', help="Fit power law to spectra before GP smoothing. If GP smoothing, it operates on residual.")
 args.add_argument("--fit_gp", default=False, action='store_true', help="Smooth spectra with a Gaussian process before linear interpolation.")
@@ -55,6 +56,7 @@ if __name__ == "__main__":
 
     # parse args
     a = args.parse_args()
+    assert len(a.imfiles) > 0, "Must have at least one imfile"
 
     if not gp_import:
         args.fit_gp = False
@@ -75,10 +77,8 @@ if __name__ == "__main__":
     Npols = len(cpols)
 
     # load sources
-    src_ra, src_dec = np.loadtxt(a.sourcefile, delimiter='\t', usecols=(0, 1), dtype=np.float, unpack=True)
-
-    # get source pixel locations
-    ra_px, dec_px = np.around(cwcs.all_world2pix(src_ra, src_dec, 1), 0).astype(np.int)
+    ra_px, dec_px, src_ra, src_dec = np.loadtxt(a.sourcefile, delimiter='\t', usecols=(0, 1, 2, 3), dtype=np.float, unpack=True)
+    ra_px, dec_px = ra_px.astype(np.int), dec_px.astype(np.int)
 
     # iterate over imfiles
     im_cube = []
@@ -95,13 +95,11 @@ if __name__ == "__main__":
         bws = []
         for i in range(len(cpols)):
             # get restoring beam info
-            bmaj, bmin, bpa = utils.get_beam_info(hdu, pol_ind=i)
-            bmajpx = np.abs(bmaj / hdu[0].header["CDELT1"])
-            bminpx = np.abs(bmin / hdu[0].header["CDELT1"])
+            bmaj, bmin, bpa = utils.get_beam_info(hdu, pol_ind=i, pxunits=True)
 
             # get restoring beam cut-out
-            rbs.append(utils.make_restoring_beam(bmajpx, bminpx, bpa, size=a.rb_Npix))
-            bws.append(np.mean([bmajpx, bminpx]))
+            rbs.append(utils.make_restoring_beam(bmaj, bmin, bpa, size=a.rb_Npix))
+            bws.append(np.mean([bmaj, bmin]))
 
         if np.isclose(bws, 0.0).any():
             continue
@@ -163,34 +161,20 @@ if __name__ == "__main__":
     # and then subtracting peak flux convolved w/ restoring beam
     cutouts = []
     spectra = []
-    for i, (ra, dec) in enumerate(zip(ra_px, dec_px)):
-        freq_src = []
-        freq_spc = []
-        b = np.max(beam_widths)
-        sc1 = slice(ra-b//2, ra+b//2+1)
-        sc2 = slice(dec-b//2, dec+b//2+1)
-        cutouts.append(np.nanmean(im_cube[:, :, sc2, sc1], axis=(0 ,1)))
-        for j, f in enumerate(freqs):
-            pol_src = []
-            pol_spc = []
-            for p in range(Npols):
-                # carve out beam-shaped rectangle and take peak flux at each frequency
-                b = beam_widths[j, p]
-                sc1 = slice(ra-b//2, ra+b//2+1)
-                sc2 = slice(dec-b//2, dec+b//2+1)
-                src = im_cube[j, p, sc2, sc1]
-                src_pk = np.nanmax(src)
-                # get peak flux location and remove it convolved w/ restoring beam
-                src_pk_px = np.ravel(np.where(src == src_pk)) + np.array([ra, dec]) - b//2
-                sc1 = slice(src_pk_px[0]-a.rb_Npix//2, src_pk_px[0]+a.rb_Npix//2+1)
-                sc2 = slice(src_pk_px[1]-a.rb_Npix//2, src_pk_px[1]+a.rb_Npix//2+1)
-                im_cube[j, p, sc2, sc1] -= rest_beams[j, p] * 0.99 * src_pk
-                pol_spc.append(src_pk)
-            freq_spc.append(pol_spc)
-        spectra.append(freq_spc)
+    masks = []
+    # iterate over sources
+    for i, px in enumerate(zip(ra_px, dec_px)):
+        # get peak and cutout at each freq & pol
+        _, peaks, im_cutout, select, _, _, _ = utils.subtract_beam(im_cube.T, rest_beams.T, px, peak_level=a.peak_level, inplace=True)
 
-    spectra = np.array(spectra)
+        # append
+        cutouts.append(np.nanmedian(im_cutout.T, axis=(0, 1)))
+        spectra.append(peaks)
+        masks.append(np.nanmax(select, axis=(2, 3)).T)
+
+    spectra = np.moveaxis(spectra, 1, 2)
     cutouts = np.array(cutouts)
+    masks = np.array(masks)
 
     # plot postage cut-outs of sources
     if a.makeplots:
@@ -204,7 +188,10 @@ if __name__ == "__main__":
             if i >= len(spectra):
                 ax.axis('off')
                 continue
-            cax = ax.imshow(np.log10(cutouts[i]), origin='lower', interpolation='nearest', cmap='nipy_spectral')
+            im = np.log10(cutouts[i])
+            cax = ax.imshow(im, origin='lower', interpolation='nearest', cmap='nipy_spectral',
+                            vmax=np.nanmax(im[masks[i]]))
+            ax.contour(masks[i], levels=[0.5], origin='lower', colors='k')
             ax.set_xticklabels([])
             ax.set_yticklabels([])
             ax.set_title("Source {}".format(i+1), fontsize=8, y=0.95)

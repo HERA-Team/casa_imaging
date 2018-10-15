@@ -114,20 +114,28 @@ def make_restoring_beam(bmaj, bmin, bpa, size=31):
     return rest_beam
 
 
-def subtract_beam(image, beam, px, subtract=True, inplace=True):
+def subtract_beam(image, beam, px, peak_level=0.5, subtract=True, inplace=True):
     """
     Subtract a postage cutout of a synthesized beam from
-    an image 2D array centered at image pixel values px.
+    an image 2D array centered at image pixel values px, and
+    read-off the peak flux in the cutout.
 
     Args:
-        image : 2D image array
-        beam : 2D beam array, must have the same CDELT as image.
+        image : an nD image array with RA and Dec as 0th and 1st axes
+        image : an nD beam array with RA and Dec as 0th and 1st axes.
+            Must have the same CDELT as the image array.
         px : pixel coordinates of image to center subtraction at.
             Doesn't need to be within the image bounds.
+        peak_level : beam level within which to look for peak flux
+        subtract : bool, if True subtract the beam else add it.
         inplace : edit input array in memory, else make a copy
 
     Returns:
-        diff_image : image with beam subtracted at px location.
+        diff_image : image with beam subtracted at px location
+        peak : peak flux within peak_level
+        im_cutout : cutout of image before subtraction
+        bm_cutout : cutout of beam before subtraction
+        im_s1, im_s2 : slice objects
     """
     # get slices
     beamNpx = beam.shape
@@ -152,19 +160,52 @@ def subtract_beam(image, beam, px, subtract=True, inplace=True):
         bm_s2 = slice(0, imNpx[1]-im_s2.stop)
         im_s2 = slice(im_s2.start, imNpx[1])
 
-    # subtract
-    im_slice = image[im_s1, im_s2].copy()
-
+    # inplace
     if inplace:
         diff_image = image
     else:
         diff_image = image.copy()
-    if subtract:
-        diff_image[im_s1, im_s2] -= beam[bm_s1, bm_s2]
-    else:
-        diff_image[im_s1, im_s2] += beam[bm_s1, bm_s2]
 
-    return diff_image, im_slice
+    # get cutouts
+    im_cutout = image[im_s1, im_s2].copy()
+    bm_cutout = beam[bm_s1, bm_s2]
+
+    def loop_peak(im, bm, plvl):
+        if im.ndim > 2:
+            pks = []
+            sel = []
+            for i in range(im.shape[2]):
+                p, s = loop_peak(im[:, :, i], bm[:, :, i], plvl)
+                pks.append(p)
+                sel.append(s)
+            return pks, sel
+        else:
+            s = bm > plvl
+            if not s.max():
+                return np.nan
+            return np.nanmax(im[s]), s
+
+    # look for peak flux within area defined by peak_level
+    peak, select = loop_peak(im_cutout, bm_cutout, peak_level)
+    if isinstance(peak, list):
+        peak = np.array(peak)
+    select = np.moveaxis(select, (0, 1), (-2, -1))
+
+    # reformat bm_cutout given image dimensions
+    if image.ndim > beam.ndim:
+        bm_cutout = bm_cutout.reshape(bm_cutout.shape + tuple([1]*(image.ndim-beam.ndim)))
+
+    # add peak value if beam is a float
+    if np.issubclass_(bm_cutout.dtype.type, np.float):
+        bm_cutout = bm_cutout * peak * 0.99999
+
+    # difference
+    if subtract:
+        diff_image[im_s1, im_s2] -= bm_cutout
+    else:
+        diff_image[im_s1, im_s2] += bm_cutout
+
+    return diff_image, peak, im_cutout, select, bm_cutout, im_s1, im_s2
 
 
 
