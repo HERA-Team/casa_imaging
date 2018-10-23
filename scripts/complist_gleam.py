@@ -136,6 +136,10 @@ if __name__ == "__main__":
                 continue
             spix = np.polyfit(np.log10(x)[~np.isnan(y)], y[~np.isnan(y)], deg=1)[0]
 
+            # if this is unreasonable, set to 0
+            if spix < -3 or spix > 1:
+                spix = 0
+
         # create component list
         cl.addcomponent(label=name, flux=flux, fluxunit="Jy", 
                         dir="J2000 {}".format(s_dir), freq=ref_freq, shape='point',
