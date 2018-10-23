@@ -33,7 +33,6 @@ args.add_argument("--point_ra", type=float, help="Pointing RA in degrees 0 < ra 
 args.add_argument("--point_dec", type=float, help="Pointing Dec in degrees -90 < dec < 90.")
 args.add_argument("--radius", type=float, default=5.0, help="Radius in degrees around pointing to get GLEAM sources.")
 args.add_argument("--min_flux", default=0.0, type=float, help="Minimum flux at 151 MHz of sources to include in model.")
-args.add_argument("--fill_spix", default=None, type=float, help="If spectral index doesn't exist for a source, use this. Default is to omit source.")
 args.add_argument("--image", default=False, action='store_true', help='Make a FITS image of model')
 args.add_argument("--freqs", default=None, type=str, help="Comma-separated values [MHz] for input into np.linspace({},{},{},endpoint=False)")
 args.add_argument("--cell", default='200arcsec', type=str, help="Image pixel size in arcsec")
@@ -107,7 +106,7 @@ if __name__ == "__main__":
         mask_rad = a.region_radius
 
     # iterate over sources and add to complist
-    select = select[np.argsort(fluxes[select])[::-1]]
+    select = select[np.argsort(dist[select])]
     source = "{name:s}\t{flux:06.2f}\t{spix:02.2f}\t{ra:07.3f}\t{dec:07.3f}"
     sources = []
     for s in select:
@@ -115,11 +114,6 @@ if __name__ == "__main__":
         flux = fluxes[s]
         spix = data['alpha'][s]
         s_ra, s_dec = data['RAJ2000'][s], data['DEJ2000'][s]
-        if np.isnan(spix):
-            if a.fill_spix is None:
-                continue
-            else:
-                spix = a.fill_spix
         s_dir = deg2eq(s_ra, s_dec)
         name = "GLEAM {}".format(s_dir)
 
@@ -132,6 +126,15 @@ if __name__ == "__main__":
             else:
                 if mask_dists.min() >= mask_rad:
                     continue
+
+        # if spectral index is a nan, try to derive it by hand
+        if np.isnan(spix):
+            x = np.array([122., 130., 143., 151., 158., 166., 174.])
+            y = np.log10([data[s]["Fint{:d}".format(int(f))] for f in x])
+            if sum(~np.isnan(y)) < 2:
+                # skip this source b/c less all but 1 bins are negative or nan...
+                continue
+            spix = np.polyfit(np.log10(x)[~np.isnan(y)], y[~np.isnan(y)], deg=1)[0]
 
         # create component list
         cl.addcomponent(label=name, flux=flux, fluxunit="Jy", 
