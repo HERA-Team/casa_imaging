@@ -22,6 +22,13 @@ import pyfits
 
 args = argparse.ArgumentParser(description="Run with casa as: casa -c complist_gleam.py <args>")
 args.add_argument("-c", type=str, help="Name of this script")
+
+# IO Arguments
+args.add_argument("--gleamfile", default="gleam.fits", type=str, help="Path to GLEAM point source catalogue FITS file [http://cdsarc.u-strasbg.fr/viz-bin/Cat?VIII/100].")
+args.add_argument("--ext", default='', type=str, help="Extension after 'gleam' for output files.")
+args.add_argument("--overwrite", default=False, action='store_true', help="Overwrite output gleam.cl and gleam.im files.")
+
+# Algorithm Arguments
 args.add_argument("--point_ra", type=float, help="Pointing RA in degrees 0 < ra < 360.")
 args.add_argument("--point_dec", type=float, help="Pointing Dec in degrees -90 < dec < 90.")
 args.add_argument("--radius", type=float, default=5.0, help="Radius in degrees around pointing to get GLEAM sources.")
@@ -31,9 +38,12 @@ args.add_argument("--image", default=False, action='store_true', help='Make a FI
 args.add_argument("--freqs", default=None, type=str, help="Comma-separated values [MHz] for input into np.linspace({},{},{},endpoint=False)")
 args.add_argument("--cell", default='200arcsec', type=str, help="Image pixel size in arcsec")
 args.add_argument("--imsize", default=512, type=int, help="Image side-length in pixels.")
-args.add_argument("--gleamfile", default="gleam.fits", type=str, help="Path to GLEAM point source catalogue FITS file [http://cdsarc.u-strasbg.fr/viz-bin/Cat?VIII/100].")
-args.add_argument("--overwrite", default=False, action='store_true', help="Overwrite output gleam.cl and gleam.im files.")
 args.add_argument("--use_peak", default=False, action='store_true', help='Use peak flux rather than integrated flux in model.')
+args.add_argument("--regions", default=None, type=str, help="Path to tab-delimited source file (see find_sources.py) that holds source RA and Dec in " \
+                    "2nd and 3rd column respectively, within which to only include GLEAM point sources.")
+args.add_argument("--region_radius", default=None, type=float, help="If providing a list of regions, this is the inclusion (exclusion) radius in degrees. B/c this uses flat-sky approx, only small-ish regions (few degrees at most) work well.")
+args.add_argument("--exclude", default=False, action='store_true', help="If providing regions via --regions, exclude souces within masks, " \
+                    "rather than only including sources within masks per default behavior.")
 
 if __name__ == "__main__":
     a = args.parse_args()
@@ -41,6 +51,8 @@ if __name__ == "__main__":
     # check version:
     if '5.3.' in casa['version']:
         raise ValueError("Cannot run this script with CASA 5.3.* because it has a bug in its ia.modify() task!")
+
+    basename = "gleam{}.cl".format(a.ext)
 
     if os.path.exists("gleam.cl") and not a.overwrite:
         print("gleam.cl already exists, not writing...")
@@ -86,14 +98,20 @@ if __name__ == "__main__":
     select = np.where((dist <= a.radius) & (fluxes >= a.min_flux))[0]
     if len(select) == 0:
         raise ValueError("No sources found given RA, Dec and min_flux selections.")
-    else:
-        print("...including {} sources".format(len(select)))
+    print("...a total of {} sources were found given RA, Dec and min_flux cuts".format(len(select)))
+
+    # if regions provided, load them
+    if a.regions is not None:
+        mask_ra, mask_dec = np.loadtxt(a.regions, dtype=np.float, usecols=(2, 3), unpack=True)
+        assert a.region_radius is not None, "if providing a list of sources, must specify region radius [deg]"
+        mask_rad = a.region_radius
 
     # iterate over sources and add to complist
     select = select[np.argsort(fluxes[select])[::-1]]
     source = "{name:s}\t{flux:06.2f}\t{spix:02.2f}\t{ra:07.3f}\t{dec:07.3f}"
     sources = []
     for s in select:
+        # get source info
         flux = fluxes[s]
         spix = data['alpha'][s]
         s_ra, s_dec = data['RAJ2000'][s], data['DEJ2000'][s]
@@ -104,12 +122,25 @@ if __name__ == "__main__":
                 spix = a.fill_spix
         s_dir = deg2eq(s_ra, s_dec)
         name = "GLEAM {}".format(s_dir)
+
+        # exclude or include if fed regions
+        if a.regions is not None:
+            mask_dists = np.sqrt((mask_ra - s_ra)**2 + (mask_dec - s_dec)**2)
+            if a.exclude:
+                if mask_dists.min() < mask_rad:
+                    continue
+            else:
+                if mask_dists.min() >= mask_rad:
+                    continue
+
+        # create component list
         cl.addcomponent(label=name, flux=flux, fluxunit="Jy", 
                         dir="J2000 {}".format(s_dir), freq=ref_freq, shape='point',
                         spectrumtype='spectral index', index=spix)
         sources.append(source.format(name=name, flux=flux, spix=spix, ra=s_ra, dec=s_dec))
 
     # write source list to file
+    print("...including {} sources".format(len(sources)))
     print("...saving gleam_srcs.tab")
     with open("gleam_srcs.tab", "w") as f:
         f.write("# name\t flux [Jy]\t spix\t RA\t Dec\n")
