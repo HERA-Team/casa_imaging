@@ -32,7 +32,7 @@ args.add_argument("--rb_Npx", default=31, type=int, help="Size of restoring beam
 args.add_argument("--thresh", default=1.0, type=float, help="Flux threshold to stop iteration.")
 args.add_argument("--maxiter", default=50, type=int, help="Maximum number of iterations (sources) to identify.")
 args.add_argument("--trim_sources", default=True, type=bool, help="Exclude weaker sources within a synthesized beam of a stronger source.")
-args.add_argument("--trim_scale", default=0.5, type=float, help="Multiplier of synthesized beam FWHM level, within which to trim weaker sources.")
+args.add_argument("--trim_scale", default=0.2, type=float, help="Peak-normalized synthesized beam response level, within which to trim weaker sources if they appear.")
 args.add_argument("--plot", default=False, action='store_true', help="Make diagnostic plot")
 
 if __name__ == "__main__":
@@ -103,7 +103,7 @@ if __name__ == "__main__":
 
         if not trim:
             # add to mask
-            utils.subtract_beam(mask, rest_beam > 0.5*a.trim_scale, pxl, subtract=False, inplace=True)
+            utils.subtract_beam(mask, rest_beam > a.trim_scale, pxl, subtract=False, inplace=True)
 
             # append
             source_peaks.append(peak)
