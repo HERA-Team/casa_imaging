@@ -25,6 +25,7 @@ args.add_argument("-c", type=str, help="Name of this script")
 
 # IO Arguments
 args.add_argument("--gleamfile", default="gleam.fits", type=str, help="Path to GLEAM point source catalogue FITS file [http://cdsarc.u-strasbg.fr/viz-bin/Cat?VIII/100].")
+args.add_argument("--outdir", default='./', type=str, help='Output directory.')
 args.add_argument("--ext", default='', type=str, help="Extension after 'gleam' for output files.")
 args.add_argument("--overwrite", default=False, action='store_true', help="Overwrite output gleam.cl and gleam.im files.")
 
@@ -53,8 +54,8 @@ if __name__ == "__main__":
 
     basename = "gleam{}.cl".format(a.ext)
 
-    if os.path.exists("gleam.cl") and not a.overwrite:
-        print("gleam.cl already exists, not writing...")
+    if os.path.exists(basename) and not a.overwrite:
+        print("{} already exists, not writing...".format(basename))
         sys.exit()
 
     # set pointing direction
@@ -148,16 +149,17 @@ if __name__ == "__main__":
 
     # write source list to file
     print("...including {} sources".format(len(sources)))
-    print("...saving gleam_srcs.tab")
-    with open("gleam_srcs.tab", "w") as f:
+    srcname = "{}.srcs.tab".format(basename)
+    print("...saving {}".format(srcname))
+    with open(srcname, "w") as f:
         f.write("# name\t flux [Jy]\t spix\t RA\t Dec\n")
         f.write('\n'.join(sources))
 
     # save
-    print("...saving gleam.cl")
-    if os.path.exists("gleam.cl"):
-        shutil.rmtree("gleam.cl")
-    cl.rename("gleam.cl")
+    print("...saving {}".format(basename))
+    if os.path.exists(basename):
+        shutil.rmtree(basename)
+    cl.rename(basename)
 
     # make image
     if a.image:
@@ -170,8 +172,9 @@ if __name__ == "__main__":
             Nfreqs = len(freqs)
 
         # setup image
-        print("...saving gleam.cl.image")
-        ia.fromshape("gleam.cl.image", [a.imsize, a.imsize, 1, Nfreqs], overwrite=True)
+        imname = "{}.image".format(basename)
+        print("...saving {}".format(imname))
+        ia.fromshape(imname, [a.imsize, a.imsize, 1, Nfreqs], overwrite=True)
         cs = ia.coordsys()
         cs.setunits(['rad','rad','','Hz'])
 
@@ -188,8 +191,9 @@ if __name__ == "__main__":
         ia.setcoordsys(cs.torecord())
         ia.setbrightnessunit("Jy/pixel")
         ia.modify(cl.torecord(), subtract=False)
-        print("...saving gleam.cl.fits")
-        exportfits(imagename="gleam.cl.image", fitsimage="gleam.cl.fits", overwrite=True, stokeslast=False)
+        fitsname = "{}.fits".format(basename)
+        print("...saving {}".format(fitsname))
+        exportfits(imagename=imname, fitsimage=fitsname, overwrite=True, stokeslast=False)
 
     cl.close()
 

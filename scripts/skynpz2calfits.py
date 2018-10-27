@@ -123,8 +123,8 @@ def skynpz2calfits(fname, uv_file, dly_files=None, amp_files=None, bp_files=None
             # get CASA delays and antennas
             dly_data = np.load(dly_file)
             dly_ants = dly_data['delay_ants']
-            dlys = dly_data['delays'][:Njones, :]
-            dly_flags = dly_data['delay_flags'][:Njones, :]
+            dlys = dly_data['delays'][:Njones, 0, :]
+            dly_flags = dly_data['delay_flags'][:Njones, 0, :]
             dly_ants = dly_ants.tolist()
             dlys *= 1e-9
             # reorder antennas to be consistant w/ ants array
@@ -161,8 +161,8 @@ def skynpz2calfits(fname, uv_file, dly_files=None, amp_files=None, bp_files=None
             # get phase antennas and phases
             phs_data = np.load(phs_file)
             phs_ants = phs_data['phase_ants']
-            phs = phs_data['phases'][:Njones, :]
-            phs_flags = phs_data['phase_flags'][:Njones, :]
+            phs = phs_data['phases'][:Njones, 0, :]
+            phs_flags = phs_data['phase_flags'][:Njones, 0, :]
             phs_ants = phs_ants.tolist()
             # reorder to match ants
             phs = np.array([phs[:, phs_ants.index(a)] if a in phs_ants else 0.0 for a in ants])
@@ -191,8 +191,8 @@ def skynpz2calfits(fname, uv_file, dly_files=None, amp_files=None, bp_files=None
             # get amp antenna and amps
             amp_data = np.load(amp_file)
             amp_ants = amp_data['amp_ants']
-            amps = amp_data['amps'][:Njones, :]
-            amp_flags = amp_data['amp_flags'][:Njones, :]
+            amps = amp_data['amps'][:Njones, 0, :]
+            amp_flags = amp_data['amp_flags'][:Njones, 0, :]
             amp_ants = amp_ants.tolist()
             # reorder to match ants
             amps = np.array([amps[:, amp_ants.index(a)] if a in amp_ants else 1.0 for a in ants])

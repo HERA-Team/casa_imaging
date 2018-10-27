@@ -41,7 +41,7 @@ args.add_argument("--outfname", type=str, default=None, help="Output FITS filena
 args.add_argument("--overwrite", default=False, action='store_true', help="overwrite output file.")
 args.add_argument("--makeplots", default=False, action='store_true', help='Make plots of sources and their spectra.')
 # Analysis Arguments
-args.add_argument("--peak_level", default=0.5, type=float, help="PSF level within which to search for peak flux of source.")
+args.add_argument("--search_frac", default=0.5, type=float, help="PSF fraction within which to search for peak flux of source.")
 args.add_argument("--rb_Npix", default=41, type=int, help="Size of restoring beam cut-out in pixels, to use in source subtraction.")
 args.add_argument("--fit_pl", default=False, action='store_true', help="Fit power law to spectra before GP smoothing. If GP smoothing, it operates on residual.")
 args.add_argument("--fit_gp", default=False, action='store_true', help="Smooth spectra with a Gaussian process before linear interpolation.")
@@ -165,7 +165,7 @@ if __name__ == "__main__":
     # iterate over sources
     for i, px in enumerate(zip(ra_px, dec_px)):
         # get peak and cutout at each freq & pol
-        _, peaks, im_cutout, select, _, _, _ = utils.subtract_beam(im_cube.T, rest_beams.T, px, peak_level=a.peak_level, inplace=True)
+        _, peaks, im_cutout, select, _, _, _ = utils.subtract_beam(im_cube.T, rest_beams.T, px, search_frac=a.search_frac, inplace=True)
 
         # append
         cutouts.append(np.nanmedian(im_cutout.T, axis=(0, 1)))
@@ -206,7 +206,8 @@ if __name__ == "__main__":
 
         fig, axes = plt.subplots(Npols, 1, figsize=(8, 6))
         fig.subplots_adjust(hspace=0.25)
-        axes = np.asarray(axes)
+        if not isinstance(axes, list):
+            axes = [axes]
 
         for i in range(Npols):
             ax = axes[i]

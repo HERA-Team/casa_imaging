@@ -49,7 +49,7 @@ a.add_argument('--degamp', default=4, type=int, help="amplitude polynomial degre
 a.add_argument('--degphase', default=1, type=int, help="phase polynomial degree for BPOLY")
 a.add_argument('--gain_spw', default='', type=str, help="Spectral window selection for gaincal routine.")
 a.add_argument("--bp_spw", default='', type=str, help="Spectral window selection for bandpass routine.")
-a.add_argument('--flag_autos', default=True, type=bool, help="flag autocorrelations in data.")
+a.add_argument('--flag_autos', default=False, action='store_true', help="flag autocorrelations in data.")
 a.add_argument("--split_cal", default=False, action='store_true', help="Split corrected column in MS from input data.")
 a.add_argument("--cal_ext", default="split", type=str, help="Suffix of calibrated MS to split from input data.")
 a.add_argument("--split_model", default=False, action='store_true', help="If True, split model column from input data and append model_ext")
@@ -204,11 +204,11 @@ if __name__ == "__main__":
         gaintables.append(kc)
         # write delays as npz file
         tb.open(kc)
-        delays = tb.getcol('FPARAM')[:, 0]
+        delays = tb.getcol('FPARAM')
         delay_ants = tb.getcol('ANTENNA1')
-        delay_flags = tb.getcol('FLAG')[:, 0]
+        delay_flags = tb.getcol('FLAG')
         tb.close()
-        np.savez("{}.npz".format(kc), delay_ants=delay_ants, delays=delays, delay_flags=delay_flags)
+        np.savez("{}.npz".format(kc), delay_ants=delay_ants, delays=delays, delay_flags=delay_flags, shape='(Npol, Nfreq, Nant)')
         echo("...Solved for {} antenna delays".format(np.sum(~delay_flags)))
         echo("...Saving delays to {}.npz".format(kc))
         echo("...Saving plotcal to {}.png".format(kc))
@@ -226,11 +226,11 @@ if __name__ == "__main__":
 
         # write phase to file
         tb.open(gpc)
-        phases = np.angle(tb.getcol('CPARAM')[:, 0])
+        phases = np.angle(tb.getcol('CPARAM'))
         phase_ants = tb.getcol('ANTENNA1')
-        phase_flags = tb.getcol('FLAG')[:, 0]
+        phase_flags = tb.getcol('FLAG')
         tb.close()
-        np.savez("{}.npz".format(gpc), phase_ants=phase_ants, phases=phases, phase_flags=phase_flags)
+        np.savez("{}.npz".format(gpc), phase_ants=phase_ants, phases=phases, phase_flags=phase_flags, shape='(Npol, Nfreq, Nant)')
         echo("...Solved for {} antenna phases".format(np.sum(~phase_flags)))
         echo("...Saving phases to {}.npz".format(gpc))
         echo("...Saving plotcal to {}.png".format(gpc))
@@ -253,11 +253,11 @@ if __name__ == "__main__":
 
         # write amp to file
         tb.open(gac)
-        amps = np.abs(tb.getcol('CPARAM')[:, 0])
+        amps = np.abs(tb.getcol('CPARAM'))
         amp_ants = tb.getcol('ANTENNA1')
-        amp_flags = tb.getcol('FLAG')[:, 0]
+        amp_flags = tb.getcol('FLAG')
         tb.close()
-        np.savez("{}.npz".format(gac), amp_ants=amp_ants, amps=amps, amp_flags=amp_flags)
+        np.savez("{}.npz".format(gac), amp_ants=amp_ants, amps=amps, amp_flags=amp_flags, shape='(Npol, Nfreq, Nant)')
         echo("...Solved for {} antenna amps".format(np.sum(~amp_flags)))
         echo("...Saving amps to {}.npz".format(gac))
         echo('...Saving G amp plotcal to {}.png'.format(gac))
@@ -298,7 +298,7 @@ if __name__ == "__main__":
             bp_freqs = tb.getcol("CHAN_FREQ")
             tb.close()
             # write to file
-            np.savez("{}.npz".format(bc), bp=bp, bp_ants=bp_ants, bp_flags=bp_flags, bp_freqs=bp_freqs)
+            np.savez("{}.npz".format(bc), bp=bp, bp_ants=bp_ants, bp_flags=bp_flags, bp_freqs=bp_freqs, shape='(Npol, Nfreq, Nant)')
             echo("...Solved for {} antenna bandpasses".format(np.sum(~bp_flags)))
             echo("...Saving bandpass to {}.npz".format(bc))
             echo("...Saving amp plotcal to {}.amp.png".format(bc))
@@ -311,6 +311,7 @@ if __name__ == "__main__":
     ## Begin Calibration ##
     # init cal_timerange
     cal_timerange = ','.join(args.timerange)
+
     # run through various calibration options
     gaintables = args.gaintables
     if args.KGcal:
