@@ -6,6 +6,9 @@ import numpy as np
 import os
 import shutil
 import scipy.stats as stats
+import traceback
+import yaml
+from collections import OrderedDict as odict
 
 
 def get_hdu_info(hdu):
@@ -114,7 +117,7 @@ def make_restoring_beam(bmaj, bmin, bpa, size=31):
     return rest_beam
 
 
-def subtract_beam(image, beam, px, peak_level=0.5, subtract=True, inplace=True):
+def subtract_beam(image, beam, px, search_frac=0.5, subtract=True, inplace=True):
     """
     Subtract a postage cutout of a synthesized beam from
     an image 2D array centered at image pixel values px, and
@@ -126,13 +129,13 @@ def subtract_beam(image, beam, px, peak_level=0.5, subtract=True, inplace=True):
             Must have the same CDELT as the image array.
         px : pixel coordinates of image to center subtraction at.
             Doesn't need to be within the image bounds.
-        peak_level : beam level within which to look for peak flux
+        search_frac : beam fraction within which to look for peak flux
         subtract : bool, if True subtract the beam else add it.
         inplace : edit input array in memory, else make a copy
 
     Returns:
         diff_image : image with beam subtracted at px location
-        peak : peak flux within peak_level
+        peak : peak flux within search_frac
         im_cutout : cutout of image before subtraction
         bm_cutout : cutout of beam before subtraction
         im_s1, im_s2 : slice objects
@@ -185,8 +188,8 @@ def subtract_beam(image, beam, px, peak_level=0.5, subtract=True, inplace=True):
                 return np.nan
             return np.nanmax(im[s]), s
 
-    # look for peak flux within area defined by peak_level
-    peak, select = loop_peak(im_cutout, bm_cutout, peak_level)
+    # look for peak flux within area defined by search_frac
+    peak, select = loop_peak(im_cutout, bm_cutout, search_frac)
     if isinstance(peak, list):
         peak = np.array(peak)
     select = np.moveaxis(select, (0, 1), (-2, -1))
@@ -208,7 +211,72 @@ def subtract_beam(image, beam, px, peak_level=0.5, subtract=True, inplace=True):
     return diff_image, peak, im_cutout, select, bm_cutout, im_s1, im_s2
 
 
+def load_config(config_file):
+    """
+    Load configuration details from a YAML file.
+    All entries of 'None' --> None and all lists
+    of lists become lists of tuples.
+    """
+    # define recursive replace function
+    def replace(d):
+        if isinstance(d, (dict, odict)):
+            for k in d.keys():
+                # 'None' and '' turn into None
+                if d[k] == 'None': d[k] = None
+                # list of lists turn into lists of tuples
+                if isinstance(d[k], list) and np.all([isinstance(i, list) for i in d[k]]):
+                    d[k] = [tuple(i) for i in d[k]]
+                elif isinstance(d[k], (dict, odict)): replace(d[k])
 
+    # Open and read config file
+    with open(config_file, 'r') as cfile:
+        try:
+            cfg = yaml.load(cfile)
+        except yaml.YAMLError as exc:
+            raise(exc)
+
+    # Replace entries
+    replace(cfg)
+
+    return cfg
+
+
+def log(msg, f=None, lvl=0, tb=None, verbose=True):
+    """
+    Add a message to the log.
+    
+    Parameters
+    ----------
+    msg : str
+        Message string to print.
+
+    f : file descriptor
+        file descriptor to write message to.
+
+    lvl : int, optional
+        Indent level of the message. Each level adds two extra spaces. 
+        Default: 0.
+
+    tb : traceback tuple, optional
+        Output of sys.exc_info()
+
+    verbose : bool, optional
+        if True, print msg. Even if False, still writes to file
+        if f is provided.
+    """
+    # catch for traceback if provided
+    if tb is not None:
+        msg += "\n{}".format('\n'.join(traceback.format_exception(*tb)))
+
+    # print
+    output = "%s%s" % ("  "*lvl, msg)
+    if verbose:
+        print(output)
+
+    # write
+    if f is not None:
+        f.write(output)
+        f.flush()
 
 
 
