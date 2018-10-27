@@ -28,7 +28,7 @@ setup_args = {
     'include_package_data': True,
     'scripts': ['scripts/pbcorr.py', 'scripts/source2file.py', 'scripts/make_model_cube.py',
                 'scripts/skynpz2calfits.py', 'scripts/source_extract.py',
-                'scripts/find_sources.py'],
+                'scripts/find_sources.py', 'scripts/calfits_to_Bcal.py'],
     'version': '0.1',
     'package_data': {'casa_imaging': data_files},
     'zip_safe': False,
