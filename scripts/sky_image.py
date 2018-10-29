@@ -67,6 +67,8 @@ a.add_argument("--multiprocess", default=False, action='store_true', help="Try t
 a.add_argument("--Nproc", default=4, type=int, help="Number of processing to spawn in pooling.")
 a.add_argument("--savemodel", default=False, action='store_true', help="When CLEANing, store FT of model components in MODEL column of MS.")
 a.add_argument("--uvsub", default=False, action='store_true', help="Before imaging, subtract MODEL column from CORRECTED_DATA column if it exists (or DATA column otherwise).")
+a.add_argument("--gridder", default='standard', type=str, help="Gridding algorithm in tclean. Options=['standard', 'wproject', 'widefield'].")
+a.add_argument("--nfacets", default=1, type=int, help="Number of facets to split image into and grid")
 # Plotting Arguments
 a.add_argument("--plot_uvdist", default=False, action='store_true', help='make a uvdist plot')
 

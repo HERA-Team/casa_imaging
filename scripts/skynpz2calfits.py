@@ -394,7 +394,7 @@ def skynpz2calfits(fname, uv_file, dly_files=None, amp_files=None, bp_files=None
     flag_dict = {}
     for i, a in enumerate(ants):
         for j, p in enumerate(jones):
-            gain_dict[(a, p)] = gains[i, :, :, j].T.conj()
+            gain_dict[(a, p)] = gains[i, :, :, j].T
             flag_dict[(a, p)] = flags[i, :, :, j].T
             if flagged_ants[i]:
                 flag_dict[(a, p)] += True
