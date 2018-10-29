@@ -121,11 +121,11 @@ def image_mfs(d):
                   cell='{}arcsec'.format(d['pxsize']), specmode='mfs', timerange=d['timerange'], uvrange=d['uvrange'], stokes=d['stokes'],
                   mask=m, deconvolver=d['deconvolver'], threshold=t, savemodel=d['savemodel'], gain=d['gain'],
                   pblimit=d['pblimit'], minpsffraction=d['minpsffraction'], gridder=d['gridder'], wprojplanes=d['wprojplanes'])
-        if i > 0:
+        if i > 0 and os.path.exists(old_m):
             shutil.move(old_m, old_m + '_{}'.format(i+1))
         log("...saving {}".format('{}.image'.format(d['im_stem'])))
         if d['export_fits']:
-            exportfits(imagename='{}.image'.format(d['im_stem']), fitsimage='{}.image.fits'.format(d['im_stem']), stokeslast=False)
+            exportfits(imagename='{}.image'.format(d['im_stem']), fitsimage='{}.image.fits'.format(d['im_stem']), stokeslast=False, overwrite=True)
             log("...saving {}".format('{}.image.fits'.format(d['im_stem'])))
 
     except:
