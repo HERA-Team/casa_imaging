@@ -206,7 +206,7 @@ if __name__ == "__main__":
 
         fig, axes = plt.subplots(Npols, 1, figsize=(8, 6))
         fig.subplots_adjust(hspace=0.25)
-        if not isinstance(axes, list):
+        if not isinstance(axes, (list, np.ndarray)):
             axes = [axes]
 
         for i in range(Npols):
