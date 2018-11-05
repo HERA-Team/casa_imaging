@@ -76,12 +76,12 @@ algorithm :
     pbcorr       : True           # bool, multiply image by primary beam to get a perceived flux model
     pbcorr_params :               # Parameters for pbcorr.py script
       beamfile : "./HERA_NF_dipole_power.beamfits" # str, path to HERA healpix beam model
-      time : 2458101.29491        # Time of observation transit in Julian Date
+      time : 2458101.29491        # Time of observation transit in Julian Date. If prep_data is True, overwritten by its output.
       pols :                      # Polarization models to use in pb correction
         - 'xx'
         - 'yy'
 
-  # Calibration Parameters for Both DI and DD Calibration
+  # General Calibration Parameters for Both DI and DD Calibration
   gen_cal : 
     source      : 'gleam02'     # Source name
     source_ra   : 30.05         # Source right ascension in J2000 degrees

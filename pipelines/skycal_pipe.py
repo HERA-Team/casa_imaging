@@ -223,6 +223,9 @@ if params['prep_data']:
 
         del uvds, uvd
 
+    # overwrite gen_model pbcorr transit jd
+    algs['gen_model']['pbcorr_params']['time'] = transit_jd
+
     # end block
     time2 = datetime.utcnow()
     start = time.day*24*3600 + time.hour*3600 + time.minute*60 + time.second
