@@ -147,8 +147,25 @@ if params['prep_data']:
 
             # load data into UVData
             utils.log("...loading data", f=lf, verbose=verbose)
-            uvd = UVData()
-            uvd.read(list(source_files), antenna_nums=p.antenna_nums)
+            _uvds = []
+            for sf in list(source_files):
+                # read data
+                _uvd = UVData()
+                _uvd.read(sf, antenna_nums=p.antenna_nums)
+
+                # read flagfile if fed
+                if p.flag_ext != "":
+                    flagfile = glob.glob("{}{}".format(sf, p.flag_ext))
+                    if len(flagfile) == 1:
+                        utils.log("...loading and applying flags {}".format(flagfile[0]), f=lf, verbose=verbose)
+                        ff = np.load(flagfile[0])
+                        _uvd.flag_array += ff['flag_array']
+
+                # append to list
+                _uvds.append(_uvd)
+
+            # concatenate source files
+            uvd = reduce(operator.add, _uvds)
 
             # isolate only relevant times
             times = np.unique(uvd.time_array)

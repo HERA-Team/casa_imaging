@@ -55,6 +55,7 @@ algorithm :
     duration : 4           # observation duration in minutes
     start_jd  : 2458101     # integer julian date of desired observation day: must match data_file day
     get_filetimes : True    # open files of-interest and to get more precise transit time
+    flag_ext  : "O.flags.npz"         # extension to data_file containing RTP flags as an .npz file
     outfile   : "zen.{:.5f}.HH.uvR"   # Output file template with a JD-format field
     pols :                            # Polarization(s) to search for: .pol. must be part of the filename
       - 'xx'
