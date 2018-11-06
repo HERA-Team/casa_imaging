@@ -255,9 +255,9 @@ if params['gen_model']:
 
     # generate component list and / or image cube flux model
     ecode = subprocess.check_call(casa + ["-c", "complist_gleam.py"] + flags)
-    model = "gleam.cl"
+    model = os.path.join(out_dir, "gleam.cl")
     if p.cl_params['image']:
-        model = "gleam.cl.image"
+        model = os.path.join(out_dir, "gleam.cl.image")
 
     # pbcorrect
     if p.pbcorr:
@@ -268,14 +268,18 @@ if params['gen_model']:
                + ["--outdir", out_dir, "--multiply", "--beamfile", p.pbcorr_params['beamfile']]
         if overwrite:
             cmd.append("--overwrite")
-        cmd.append("gleam.cl.fits")
+        cmd.append(os.path.join(out_dir, "gleam.cl.fits"))
 
         # generate component list and / or image cube flux model
         ecode = subprocess.check_call(cmd)
 
         # importfits
-        ecode = subprocess.check_call(casa + ["-c", "importfits('gleam.cl.pbcorr.fits', 'gleam.cl.pbcorr.image', overwrite={})".format(overwrite)])
-        model = "gleam.cl.pbcorr.image"
+        cmd = casa + ["-c", "importfits('{}}', '{}', overwrite={})".format(os.path.join(out_dir, 'gleam.cl.pbcorr.fits'), os.path.join(out_dir, 'gleam.cl.pbcorr.image'), overwrite)]
+        ecode = subprocess.check_call(cmd)
+        model = os.path.join(out_dir, "gleam.cl.pbcorr.image")
+
+    # update di_cal model path
+    algs['di_cal']['cal_params']['model'] = model
 
     # end block
     time2 = datetime.utcnow()

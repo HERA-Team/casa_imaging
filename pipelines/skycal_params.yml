@@ -1,6 +1,11 @@
 # skycal_params.yml
 #
 # parameter file for casa_imaging/skycal_pipe.py
+#
+# Notes:
+#   All output filenames have an out_dir root (ex. logfile).
+#   All input filenames have a work_dir root (ex. gen_model.cl_params.gleamfile)
+#   except for data_file which has a data_root root.
 
 #---------------------------------------------------------------
 # IO Parameters
@@ -99,7 +104,7 @@ algorithm :
   # Direction Independent Calibration Parameters
   di_cal : 
     cal_params :            # di_cal calibration parameters
-      model : 'gleam.cl.pbcorr.image'    # str, path to flux model
+      model : 'gleam.cl.pbcorr.image'    # str, path to flux model. Overwritten by gen_model if True.
       refant : 53           # int or comma-delimited str of reference antenna(s)
       rflag : False         # bool, run rflag task
       KGcal : True          # bool, run Delay and Mean Phase cal
