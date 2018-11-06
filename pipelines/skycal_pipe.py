@@ -242,19 +242,23 @@ if params['gen_model']:
                  f=lf, verbose=verbose)
     utils.log(json.dumps(algs['gen_model'], indent=1) + '\n', f=lf, verbose=verbose)
     p = Dict2Obj(**algs['gen_model'])
+    c = Dict2Obj(**p.cl_params)
 
-    # compile flags
-    flags = ['--point_ra', str(point_ra), '--point_dec', str(latitude), '--outdir', out_dir]
-    for par in algs['gen_model']['cl_params']:
-        if isinstance(p.cl_params[par], (bool, np.bool)):
-            flags.append("--{}".format(par))
-        else:
-            flags += ["--{}".format(par), str(p.cl_params[par])]
+    # compile command
+    cmd = casa + ["-c", "complist_gleam.py"]
+    cmd += ['--point_ra', point_ra, '--point_dec', latitude, '--outdir', out_dir, 
+            '--gleamfile', c.gleamfile, '--radius', c.radius, '--min_flux', c.min_flux,
+            '--freqs', c.freqs, '--cell', c.cell, '--imsize', c.imsize]
+    if c.image:
+        cmd += ['--image']
+    if c.use_peak:
+        cmd += ['--use_peak']
     if overwrite:
-        flags.append('--overwrite')
+        cmd += ['--overwrite']
+    cmd = map(str, cmd)
 
     # generate component list and / or image cube flux model
-    ecode = subprocess.check_call(casa + ["-c", "complist_gleam.py"] + flags)
+    ecode = subprocess.check_call(cmd)
     model = os.path.join(out_dir, "gleam.cl")
     if p.cl_params['image']:
         model = os.path.join(out_dir, "gleam.cl.image")
