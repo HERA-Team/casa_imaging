@@ -87,6 +87,14 @@ algorithm :
     source_ra   : 30.05         # Source right ascension in J2000 degrees
     source_dec  : -30.891       # Source declination in J2000 degrees
     ex_ants     : 0,2,11,14,50,98 # str, comma-delimited str of bad antenna
+    export_gains  : True        # export to calfits and optionally smooth. If True, the corresponding miriad visibility file must be present.
+    export_params :             # params to feed skynpz2calfits.py after calibration. gaintables are collected, combined and re-written as a single B.cal table.
+      smooth      : True    # smooth with a Gaussian Process
+      gp_max_dly  : 200     # Maximum delay [ns] for smoothing
+      medfilt     : True    # median filter bandpass before smoothing
+      kernel      : 13      # median filter kernel size (channels)
+      bp_broad_flags : True    # broadcast flags at a specific channel across all antennas
+      bp_flag_frac   : 0.25    # fractiona of flagged antennas needed to broadcast across all antennas
 
   # Direction Independent Calibration Parameters
   di_cal : 
@@ -109,7 +117,7 @@ algorithm :
       split_ext : "split"   # str, file extension of CORRECTED split
       split_model : True   # str, split MODEL column into a new .model MS
       gain_ext  : ''        # str, file extension of gain tables 
-      gaintables  : ''            # pre-calibration gain tables to apply first
+      gaintables  : ''      # pre-calibration gain tables to apply first
     image_mfs   : True      # make an MFS image with parameters below
     image_spec  : False     # make a coarse spectral cube via multiple MFS images
     img_params :            # di_cal MFS imaging parameters

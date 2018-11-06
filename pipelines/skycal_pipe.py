@@ -345,8 +345,83 @@ if params['di_cal']:
     gext = ''
     if c.gain_ext not in ['', None]:
         gext = '.{}'.format(c.gain_ext)
-    gaintables += sorted(glob.glob("{}{}.?.cal".format(datafile, gext)) \
-                        + glob.glob("{}{}.????.cal".format(datafile, gext)))
+    gts = sorted(glob.glob("{}{}.?.cal".format(datafile, gext)) + glob.glob("{}{}.????.cal".format(datafile, gext)))
+
+    # export to calfits if desired
+    if p.export_gains:
+        utils.log("...exporting\n{}\n to calfits and combining into a single cal table".format('\n'.join(gts)), f=lf, verbose=verbose)
+        # do file checks
+        mirvis = os.path.splitext(data_file)[0]
+        gtsnpz = ["{}.npz".format(gt) for gt in gts]
+        if not os.path.exists(mirvis):
+            utils.log("...{} doesn't exist: cannot export gains to calfits".format(mirvis), f=lf, verbose=verbose)
+
+        elif len(gts) == 0:
+            utils.log("...no gaintables found, cannot export gains to calfits", f=lf, verbose=verbose)
+
+        elif not np.all([os.path.exists(gtnpz) for gtnpz in gtsnpz]):
+            utils.log("...couldn't find a .npz file for all input .cal tables, can't export to calfits", f=lf, verbose=verbose)
+
+        else:
+            calfits_fname = "{}.{}{}.calfits".format(mirvis, p.source, c.gain_ext)
+            cmd = ['skynpz2calfits.py', "--fname", calfits_fname, "--uv_file", mirvis, '--out_dir', out_dir]
+            if overwrite:
+                cmd += ["--overwrite"]
+
+            # add a delay and phase solution
+            matchK = ["K.cal.npz" in gt for gt in gtsnpz]
+            matchGphs = ["Gphs.cal.npz" in gt for gt in gtsnpz]
+            if np.any(matchK):
+                cmd += ["--plot_dlys"]
+                cmd += ["--dly_files"] + [gtsnpz[i] for i, b in enumerate(matchK) if b == True]
+                if not np.any(matchGphs):
+                    utils.log("...WARNING: A delay file {} was found, but no mean phase file, which is needed if a delay file is present.", f=lf, verbose=verbose)
+            if np.any(matchGphs):
+                cmd += ["--plot_phs"]
+                cmd += ["--phs_files"] + [gtsnpz[i] for i, b in enumerate(matchGphs) if b == True]
+
+            # add a mean amp solution
+            matchGamp = ["Gamp.cal.npz" in gt for gt in gtsnpz]
+            if np.any(matchGamp):
+                cmd += ["--plot_amp"]
+                cmd += ["--amp_files"] + [gtsnpz[i] for i, b in enumerate(matchGamp) if b == True]
+
+            # add a bandpass solution
+            matchB = ["B.cal.npz" in gt for gt in gtsnpz]
+            if np.any(matchB):
+                cmd += ["--plot_bp"]
+                cmd += ["--bp_files"] + [gtsnpz[i] for i, b in enumerate(matchB) if b == True]
+
+            # additional smoothing options
+            if p.export_params['smooth']:
+                cmd += ["--bp_gp_smooth", "--bp_gp_max_dly", p.export_params['gp_max_dly']]
+            if p.export_params['medfilt']:
+                cmd += ["--bp_medfilt", "--medfilt_kernel", p.export_params['kernel']]
+            if p.export_params['bp_broad_flags']:
+                cmd += ["--bp_broad_flags", "--bp_flag_frac", p.export_params['bp_flag_frac']]
+            if not verbose:
+                cmd += ['--silence']
+
+            cmd = map(str, cmd)
+            ecode = subprocess.check_call(cmd)
+
+            # convert calfits back to a single Btotal.cal table
+            if np.any(matchB):
+                # convert to cal
+                bfile = gts[matchB.index(True)]
+                btot_file = os.path.join(out_dir, "{}{}.Btotal.cal".format(datafile, gext))
+                cmd = casa + ["-c", "calfits_to_Bcal.py", "--cfits", calfits_fname, "--inp_cfile", bfile,"--out_cfile", btot_file]
+                if overwrite:
+                    cmd += ["--overwrite"]
+                ecode = subprocess.check_call(cmd)
+                # replace gaintables with Btotal.cal
+                gts = [btot_file]
+
+    # append to gaintables
+    try:
+        gaintables += gts
+    except NameError:
+        gaintables = gts
 
     # Perform MFS imaging
     if p.image_mfs:
@@ -562,6 +637,77 @@ if params['dd_cal']:
         gext = '.{}'.format(c.gain_ext)
     gts = sorted(glob.glob("{}{}.?.cal".format(split_datafile, gext)) \
                         + glob.glob("{}{}.????.cal".format(split_datafile, gext)))
+
+    # export to calfits if desired
+    if p.export_gains:
+        utils.log("...exporting\n{}\n to calfits and combining into a single cal table".format('\n'.join(gts)), f=lf, verbose=verbose)
+        # do file checks
+        mirvis = os.path.splitext(data_file)[0]
+        gtsnpz = ["{}.npz".format(gt) for gt in gts]
+        if not os.path.exists(mirvis):
+            utils.log("...{} doesn't exist: cannot export gains to calfits".format(mirvis), f=lf, verbose=verbose)
+
+        elif len(gts) == 0:
+            utils.log("...no gaintables found, cannot export gains to calfits", f=lf, verbose=verbose)
+
+        elif not np.all([os.path.exists(gtnpz) for gtnpz in gtsnpz]):
+            utils.log("...couldn't find a .npz file for all input .cal tables, can't export to calfits", f=lf, verbose=verbose)
+
+        else:
+            calfits_fname = "{}.{}{}.calfits".format(mirvis, p.source, c.gain_ext)
+            cmd = ['skynpz2calfits.py', "--fname", calfits_fname, "--uv_file", mirvis, '--out_dir', out_dir]
+            if overwrite:
+                cmd += ["--overwrite"]
+
+            # add a delay and phase solution
+            matchK = ["K.cal.npz" in gt for gt in gtsnpz]
+            matchGphs = ["Gphs.cal.npz" in gt for gt in gtsnpz]
+            if np.any(matchK):
+                cmd += ["--plot_dlys"]
+                cmd += ["--dly_files"] + [gtsnpz[i] for i, b in enumerate(matchK) if b == True]
+                if not np.any(matchGphs):
+                    utils.log("...WARNING: A delay file {} was found, but no mean phase file, which is needed if a delay file is present.", f=lf, verbose=verbose)
+            if np.any(matchGphs):
+                cmd += ["--plot_phs"]
+                cmd += ["--phs_files"] + [gtsnpz[i] for i, b in enumerate(matchGphs) if b == True]
+
+            # add a mean amp solution
+            matchGamp = ["Gamp.cal.npz" in gt for gt in gtsnpz]
+            if np.any(matchGamp):
+                cmd += ["--plot_amp"]
+                cmd += ["--amp_files"] + [gtsnpz[i] for i, b in enumerate(matchGamp) if b == True]
+
+            # add a bandpass solution
+            matchB = ["B.cal.npz" in gt for gt in gtsnpz]
+            if np.any(matchB):
+                cmd += ["--plot_bp"]
+                cmd += ["--bp_files"] + [gtsnpz[i] for i, b in enumerate(matchB) if b == True]
+
+            # additional smoothing options
+            if p.export_params['smooth']:
+                cmd += ["--bp_gp_smooth", "--bp_gp_max_dly", p.export_params['gp_max_dly']]
+            if p.export_params['medfilt']:
+                cmd += ["--bp_medfilt", "--medfilt_kernel", p.export_params['kernel']]
+            if p.export_params['bp_broad_flags']:
+                cmd += ["--bp_broad_flags", "--bp_flag_frac", p.export_params['bp_flag_frac']]
+            if not verbose:
+                cmd += ['--silence']
+
+            cmd = map(str, cmd)
+            ecode = subprocess.check_call(cmd)
+
+            # convert calfits back to a single Btotal.cal table
+            if np.any(matchB):
+                # convert to cal
+                bfile = gts[matchB.index(True)]
+                btot_file = os.path.join(out_dir, "{}{}.Btotal.cal".format(datafile, gext))
+                cmd = casa + ["-c", "calfits_to_Bcal.py", "--cfits", calfits_fname, "--inp_cfile", bfile,"--out_cfile", btot_file]
+                if overwrite:
+                    cmd += ["--overwrite"]
+                ecode = subprocess.check_call(cmd)
+                # replace gaintables with Btotal.cal
+                gts = [btot_file]
+
     try:
         gaintables += gts
     except NameError:
