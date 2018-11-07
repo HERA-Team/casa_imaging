@@ -106,6 +106,7 @@ casa_imaging/data/*.log
 scripts/*.log
 casa_imaging/tests/*.last
 casa_imaging/data/*.last
-
+casa_imaging/data/*.lock
+casa_imaging/data/*/*.lock
 
 

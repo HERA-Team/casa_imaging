@@ -9,7 +9,7 @@ import scipy.stats as stats
 import traceback
 import yaml
 from collections import OrderedDict as odict
-
+import datetime
 
 def get_hdu_info(hdu):
     """
@@ -278,9 +278,25 @@ def log(msg, f=None, lvl=0, tb=None, verbose=True):
         f.write(output)
         f.flush()
 
+def get_direction(ra, dec):
+    """Turn ra and dec in degrees into a CASA J2000 string"""
+    _ra = ra / 15.0
+    ra_h = int(np.floor(_ra))
+    ra_m = int(np.floor((_ra - ra_h) * 60))
+    ra_s = int(np.around(((_ra - ra_h) * 60 - ra_m) * 60))
+    dec_d = int(np.floor(np.abs(dec)) * dec / np.abs(dec))
+    dec_m = int(np.floor(np.abs(dec - dec_d) * 60.))
+    dec_s = int(np.abs(dec - dec_d) * 3600 - dec_m * 60)
+    direction = "{:02d}:{:02d}:{:02.0f}\t{:03d}:{:02d}:{:02.0f}:".format(ra_h, ra_m, ra_s, dec_d, dec_m, dec_s)
+
+    return direction
 
 
+def get_elapsed_time(time1, time2):
+    """Get elapsed time in seconds given two datetime
+    objects within the same month of the same year"""
+    start = time1.day*24*3600 + time1.hour*3600 + time1.minute*60 + time1.second
+    end = time2.day*24*3600 + time2.hour*3600 + time2.minute*60 + time2.second
 
-
-
+    return end - start
 
