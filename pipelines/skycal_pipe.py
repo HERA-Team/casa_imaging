@@ -278,7 +278,7 @@ if params['gen_model']:
         ecode = subprocess.check_call(cmd)
 
         # importfits
-        cmd = casa + ["-c", "importfits('{}}', '{}', overwrite={})".format(os.path.join(out_dir, 'gleam.cl.pbcorr.fits'), os.path.join(out_dir, 'gleam.cl.pbcorr.image'), overwrite)]
+        cmd = casa + ["-c", "importfits('{}', '{}', overwrite={})".format(os.path.join(out_dir, 'gleam.cl.pbcorr.fits'), os.path.join(out_dir, 'gleam.cl.pbcorr.image'), overwrite)]
         ecode = subprocess.check_call(cmd)
         model = os.path.join(out_dir, "gleam.cl.pbcorr.image")
 
@@ -359,7 +359,7 @@ if params['di_cal']:
     if p.export_gains:
         utils.log("...exporting\n{}\n to calfits and combining into a single cal table".format('\n'.join(gts)), f=lf, verbose=verbose)
         # do file checks
-        mirvis = os.path.splitext(data_file)[0]
+        mirvis = os.path.splitext(datafile)[0]
         gtsnpz = ["{}.npz".format(gt) for gt in gts]
         if not os.path.exists(mirvis):
             utils.log("...{} doesn't exist: cannot export gains to calfits".format(mirvis), f=lf, verbose=verbose)
@@ -431,22 +431,25 @@ if params['di_cal']:
     except NameError:
         gaintables = gts
 
-    # Perform MFS imaging
-    if p.image_mfs:
-        # Image Corrected Data
-        utils.log("...starting MFS image of CORRECTED data", f=lf, verbose=verbose)
+    # Compile General Imaging Command
+    if p.image_mfs or p.image_spec:
         c = Dict2Obj(**p.img_params)
         cmd = casa + ["-c", "sky_image.py"]
         cmd += ["--source", p.source, "--out_dir", out_dir,
                 "--pxsize", c.pxsize, "--imsize", c.imsize,
-                "--spw", c.spw, "--uvrange", c.uvrange, "--timerange", c.timerange,
+                "--uvrange", c.uvrange, "--timerange", c.timerange,
                 "--stokes", c.stokes, "--weighting", c.weighting, "--robust", c.robust,
                 "--pblimit", c.pblimit, "--deconvolver", c.deconvolver, "--niter",
                 c.niter, '--cycleniter', c.cycleniter, '--threshold', c.threshold,
                 '--mask', c.mask]
         cmd = [map(str, _cmd) if type(_cmd) == list else str(_cmd) for _cmd in cmd]
         cmd = reduce(operator.add, [i if type(i) == list else [i] for i in cmd])
-        icmd = cmd + ['--image_mfs', '--msin', datafile, "--source_ext", c.source_ext] 
+
+    # Perform MFS imaging
+    if p.image_mfs:
+        # Image Corrected Data
+        utils.log("...starting MFS image of CORRECTED data", f=lf, verbose=verbose)
+        icmd = cmd + ['--image_mfs', '--msin', datafile, "--source_ext", c.source_ext, '--spw', c.spw] 
         ecode = subprocess.check_call(icmd)
 
         # Image the split MODEL
@@ -650,7 +653,7 @@ if params['dd_cal']:
     if p.export_gains:
         utils.log("...exporting\n{}\n to calfits and combining into a single cal table".format('\n'.join(gts)), f=lf, verbose=verbose)
         # do file checks
-        mirvis = os.path.splitext(data_file)[0]
+        mirvis = os.path.splitext(datafile)[0]
         gtsnpz = ["{}.npz".format(gt) for gt in gts]
         if not os.path.exists(mirvis):
             utils.log("...{} doesn't exist: cannot export gains to calfits".format(mirvis), f=lf, verbose=verbose)
