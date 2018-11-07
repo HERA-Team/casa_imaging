@@ -92,13 +92,15 @@ def test_sky_image():
                            "--spec_start", "0", "--spec_end", "100",
                            "--imsize", "256", "--pxsize", "400",
                            "--stokes", "I", "--weighting", "briggs", "--robust", "-1",
-                           "--deconvolver", "hogbom"])
+                           "--deconvolver", "hogbom", '--gridder', 'standard'])
 
     # Run a Source Extraction
     out = subprocess.call(["../../scripts/source_extract.py"] + sorted(glob.glob("skyimage.ms.gleam02.spec????.image.fits")) \
                         + ["--source", "gleam02", "--radius", "2", "--pol", "1",
-                           "--output_fname", "skyimage.ms.spec.tab", "--overwrite"])
-    nt.assert_equal(np.loadtxt("skyimage.ms.spec.tab").shape, (5, 5))
+                           "--overwrite"])
+    nt.assert_true(os.path.exists("skyimage.ms.gleam02.gleam02.spectrum.npz"))
+    s = np.load("skyimage.ms.gleam02.gleam02.spectrum.npz")
+    nt.assert_equal(s['peak_flux'].shape, (5, 1))
 
     # clean up space
     sfiles = glob.glob("./skyimage.ms*") + glob.glob("gleam*") + glob.glob("*.last") + glob.glob("*.log")
