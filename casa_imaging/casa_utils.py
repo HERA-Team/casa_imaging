@@ -10,6 +10,7 @@ import traceback
 import yaml
 from collections import OrderedDict as odict
 import datetime
+import sys
 
 def get_hdu_info(hdu):
     """
@@ -268,15 +269,18 @@ def log(msg, f=None, lvl=0, tb=None, verbose=True):
     if tb is not None:
         msg += "\n{}".format('\n'.join(traceback.format_exception(*tb)))
 
-    # print
+    # form output
     output = "%s%s\n" % ("  "*lvl, msg)
-    if verbose:
-        print(output)
-
+    
     # write
     if f is not None:
         f.write(output)
         f.flush()
+
+    # print
+    if verbose and sys.stdout != f:
+        print(output)
+
 
 def get_direction(ra, dec):
     """Turn ra and dec in degrees into a CASA J2000 string"""
