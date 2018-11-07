@@ -68,6 +68,8 @@ if params['joinlog']:
 else:
     ef = open(os.path.join(params['out_dir'], params['errfile']), "w")
 casa += ['--logfile', logfile]
+sys.stdout = lf
+sys.stderr = ef
 
 # Setup (Small) Global Variable Dictionary
 varlist = ['datafile', 'verbose', 'overwrite', 'out_dir', 'casa', 'point_ra', 'longitude',
