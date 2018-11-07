@@ -269,7 +269,7 @@ def log(msg, f=None, lvl=0, tb=None, verbose=True):
         msg += "\n{}".format('\n'.join(traceback.format_exception(*tb)))
 
     # print
-    output = r"%s%s\n" % ("  "*lvl, msg)
+    output = "%s%s\n" % ("  "*lvl, msg)
     if verbose:
         print(output)
 

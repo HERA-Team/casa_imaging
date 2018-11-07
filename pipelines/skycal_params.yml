@@ -100,12 +100,6 @@ algorithm :
     kernel      : 13      # median filter kernel size (channels)
     bp_broad_flags : True    # broadcast flags at a specific channel across all antennas
     bp_flag_frac   : 0.25    # fractiona of flagged antennas needed to broadcast across all antennas
-    source_extract  : True    # bool, if image_spec, extract spectrum from output image cube
-    # Source Extraction Parameters
-    pols        : [-5, -6]  # stokes polarizations to extract
-    radius      : 1         # radius around source in degrees to estimate peak flux
-    gauss_mult  : 1.5       # Coefficient of PSF width to use as Gaussian fit mask
-    plot_fit    : False     # plot fit and residual
 
   # Direction Independent Calibration Parameters
   di_cal : 
