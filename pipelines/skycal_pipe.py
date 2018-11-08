@@ -272,8 +272,8 @@ def gen_model(**kwargs):
     cmd = map(str, cmd)
     ecode = subprocess.check_call(cmd)
 
-    modelstem = "gleam{}.cl".format(p.file_ext)
-    model = os.path.join(p.out_dir, modelstem)
+    modelstem = os.path.join(p.out_dir, "gleam{}.cl".format(p.file_ext))
+    model = modelstem
     if p.image:
         model += ".image"
 
