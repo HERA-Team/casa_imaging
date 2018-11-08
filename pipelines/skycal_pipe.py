@@ -291,6 +291,7 @@ def gen_model(**kwargs):
         # generate component list and / or image cube flux model
         cmd = map(str, cmd)
         ecode = subprocess.check_call(cmd)
+        modelstem = os.path.join(p.out_dir, modelstem)
 
         # importfits
         cmd = p.casa + ["-c", "importfits('{}', '{}', overwrite={})".format(modelstem + '.pbcorr.fits', modelstem + '.pbcorr.image', p.overwrite)]
@@ -454,7 +455,7 @@ def image(**kwargs):
                 "--stokes", p.stokes, "--weighting", p.weighting, "--robust", p.robust,
                 "--pblimit", p.pblimit, "--deconvolver", p.deconvolver, "--niter",
                 p.niter, '--cycleniter', p.cycleniter, '--threshold', p.threshold,
-                '--mask', p.mask]
+                '--mask', p.mask, '--gridder', p.gridder, '--wprojplanes', p.wpplanes]
         cmd = [map(str, _cmd) if type(_cmd) == list else str(_cmd) for _cmd in cmd]
         cmd = reduce(operator.add, [i if type(i) == list else [i] for i in cmd])
 

@@ -144,6 +144,8 @@ algorithm :
     stokes      : "XXYY"    # str, Stokes parameters to image
     timerange   : ""        # str, UTC timerange to image
     deconvolver : 'hogbom' # str, deconvolving algorithm to use
+    gridder     : 'standard' # str, gridder to use: [standard, wproject]
+    wpplanes    : 1         # int, wprojectplanes for wprojection
     pblimit     : -1        # float, pb response cut
     image_mdl   : False     # bool, make an MFS image of the split MODEL
     image_res   : False     # bool, perform a UVsub and make MFS image of residual
@@ -221,6 +223,8 @@ algorithm :
     stokes      : "XXYY"    # str, Stokes parameters to image
     timerange   : ""        # str, UTC timerange to image
     deconvolver : 'hogbom' # str, deconvolving algorithm to use
+    gridder     : 'standard' # str, gridder to use: [standard, wproject]
+    wpplanes    : 1         # int, wprojectplanes for wprojection
     pblimit     : -1        # float, pb response cut
     image_mdl   : False     # bool, make an MFS image of the split MODEL
     image_res   : False     # bool, perform a UVsub and make MFS image of residual
