@@ -52,7 +52,7 @@ if __name__ == "__main__":
     if '5.3.' in casa['version']:
         raise ValueError("Cannot run this script with CASA 5.3.* because it has a bug in its ia.modify() task!")
 
-    basename = "gleam{}.cl".format(a.ext)
+    basename = os.path.join(a.outdir, "gleam{}.cl".format(a.ext))
 
     if os.path.exists(basename) and not a.overwrite:
         print("{} already exists, not writing...".format(basename))
