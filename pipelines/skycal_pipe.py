@@ -266,7 +266,7 @@ def gen_model(**kwargs):
     if hasattr(p, 'regions'):
         cmd += ['--regions', p.regions, '--exclude', '--region_radius', p.region_radius]
     if hasattr(p, 'file_ext'):
-        cmd += ['--file_ext', p.file_ext]
+        cmd += ['--ext', p.file_ext]
     else:
         p.file_ext = ''
     cmd = map(str, cmd)
