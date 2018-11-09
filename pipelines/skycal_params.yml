@@ -151,6 +151,7 @@ algorithm :
     image_res   : False     # bool, perform a UVsub and make MFS image of residual
     # Spectral Imaging Parameters
     image_spec  : False     # make a coarse spectral cube via multiple MFS images
+    image_mdl_spec : False  # make a coarse spec cube of the model
     spec_start  : 0         # int, if image_spec, this is starting channel
     spec_end    : 1024      # int, if image_spec, this is ending channel
     spec_dchan  : 250       # int, if image_spec, this is Nchans per MFS image
