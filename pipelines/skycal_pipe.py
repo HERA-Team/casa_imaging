@@ -463,7 +463,8 @@ def image(**kwargs):
     if p.image_mfs:
         # Image Corrected Data
         utils.log("...starting MFS image of CORRECTED data", f=p.lf, verbose=p.verbose)
-        icmd = cmd + ['--image_mfs', '--msin', p.datafile, "--source_ext", p.source_ext, '--spw', p.spw] 
+        icmd = cmd + ['--image_mfs', '--msin', p.datafile, '--spw', p.spw,
+                      "--source_ext", "{}_corr".format(p.source_ext)] 
         ecode = subprocess.check_call(icmd)
 
         # Image the split MODEL
@@ -473,7 +474,7 @@ def image(**kwargs):
             if not os.path.exists(mfile):
                 utils.log("Didn't split model from datafile, which is required to image the model", f=p.lf, verbose=p.verbose)
             else:
-                icmd = cmd + ['--image_mfs', '--msin', mfile, '--source_ext', p.source_ext]
+                icmd = cmd + ['--image_mfs', '--msin', mfile, '--source_ext', "{}_model".format(p.source_ext)]
                 ecode = subprocess.check_call(icmd)
 
         # Image the CORRECTED - MODEL residual
