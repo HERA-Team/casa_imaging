@@ -29,7 +29,6 @@ import copy
 import operator
 import subprocess
 
-
 #-------------------------------------------------------------------------------
 # Parse YAML Configuration File
 #-------------------------------------------------------------------------------
@@ -491,7 +490,7 @@ def image(**kwargs):
     if p.image_spec:
         # Perform Spectral Cube imaging
         utils.log("...starting spectral cube imaging", f=p.lf, verbose=p.verbose)
-        icmd = cmd + ['--spec_cube', '--msin', p.datafile, "--source_ext", p.source_ext,
+        icmd = cmd + ['--spec_cube', '--msin', p.datafile, "--source_ext", "{}_spec".format(p.source_ext),
                       '--spec_start', str(p.spec_start), '--spec_end', str(p.spec_end),
                       '--spec_dchan', str(p.spec_dchan)] 
         ecode = subprocess.check_call(icmd)
