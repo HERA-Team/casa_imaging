@@ -18,6 +18,7 @@ import argparse
 import subprocess
 import shutil
 import glob
+import re
 
 ## Set Arguments
 # Required Arguments
@@ -116,7 +117,7 @@ if __name__ == "__main__":
     if args.refant is None and (args.KGcal is True or args.Acal is True or args.BPcal is True):
         raise AttributeError("if calibrating, refant needs to be specified")
     if args.refant is not None:
-        refants = [antid2std[ra] for ra in args.refant.split(',')]
+        refants = [antid2stn[ra] for ra in args.refant.split(',')]
 
     # rephase to source
     if args.source is not None:

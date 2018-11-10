@@ -95,7 +95,7 @@ def test_sky_image():
                            "--deconvolver", "hogbom", '--gridder', 'standard'])
 
     # Run a Source Extraction
-    out = subprocess.call(["../../scripts/source_extract.py"] + sorted(glob.glob("skyimage.ms.gleam02.spec????.image.fits")) \
+    out = subprocess.call(["../../scripts/source_extract.py"] + sorted(glob.glob("skyimage.ms.gleam02.chan????.image.fits")) \
                         + ["--source", "gleam02", "--radius", "2", "--pol", "1",
                            "--overwrite"])
     nt.assert_true(os.path.exists("skyimage.ms.gleam02.gleam02.spectrum.npz"))

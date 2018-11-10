@@ -301,7 +301,7 @@ if __name__ == "__main__":
 
             # loop over spectral windows
             for j, chan in enumerate(spec_windows):
-                spec_im_stem = '{}.spec{:04d}'.format(im_stem, chan)
+                spec_im_stem = '{}.chan{:04d}'.format(im_stem, chan)
                 if i != 0:
                     spec_im_stem += '._tr{}'.format(j)
 

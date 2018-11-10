@@ -17,7 +17,7 @@ import subprocess
 import unittest
 
 ## Note! In order to debug this script, you should open 
-## a CASA session, and copy-paste each subprocess call
+## an IPython session, and copy-paste each subprocess call
 ## into the session.
 
 def test_source2file():
@@ -42,9 +42,9 @@ def test_model_image():
                            "--min_flux", "0.1", "--gleamfile", "../data/small_gleam.fits",
                            "--radius", "15", "--overwrite"])
     nt.assert_equal(out, 0)
-    nt.assert_true(np.all([os.path.exists("gleam_srcs.tab"), os.path.exists("gleam.cl"),
+    nt.assert_true(np.all([os.path.exists("gleam.cl.srcs.tab"), os.path.exists("gleam.cl"),
                            os.path.exists("gleam.cl.image"), os.path.exists("gleam.cl.fits")]))
-    nt.assert_equal(np.loadtxt("gleam_srcs.tab", dtype=np.str, delimiter='\t').shape, (5612, 5))
+    nt.assert_equal(np.loadtxt("gleam.cl.srcs.tab", dtype=np.str, delimiter='\t').shape, (5612, 5))
 
     # Test 2: primary beam correction
     out = subprocess.call(["../../scripts/pbcorr.py", "--beamfile",

@@ -81,8 +81,10 @@ if __name__ == "__main__":
 
     # get fluxes
     if a.use_peak:
+        fstr = "Fp{:d}"
         fluxes = data['Fp151']
     else:
+        fstr = "Fint{:d}"
         fluxes = data['Fint151']
 
     # correct for wrapping RA
@@ -130,8 +132,16 @@ if __name__ == "__main__":
 
         # if spectral index is a nan, try to derive it by hand
         if np.isnan(spix):
-            x = np.array([122., 130., 143., 151., 158., 166., 174.])
-            y = np.log10([data[s]["Fint{:d}".format(int(f))] for f in x])
+            frq = np.array([122., 130., 143., 151., 158., 166., 174.])
+            x = []
+            xstr = []
+            for f in frq:
+                xst = fstr.format(int(f))
+                if xst in data.dtype.fields:
+                    x.append(f)
+                    xstr.append(xst)
+            x = np.asarray(x, dtype=np.float)
+            y = np.log10([data[s][xs] for xs in xstr])
             if sum(~np.isnan(y)) < 2:
                 # skip this source b/c less all but 1 bins are negative or nan...
                 continue
