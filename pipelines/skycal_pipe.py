@@ -477,75 +477,6 @@ def calibrate(**kwargs):
 
     return gtables
 
-# Define an Imaging Function
-def image(**kwargs):
-    p = Dict2Obj(**kwargs)
-    # compile general image command
-    if p.image_mfs or p.image_spec or p.image_mdl_spec:
-        cmd = p.casa + ["-c", "sky_image.py"]
-        cmd += ["--source", p.source, "--out_dir", p.out_dir,
-                "--pxsize", p.pxsize, "--imsize", p.imsize,
-                "--uvrange", p.uvrange, "--timerange", p.timerange,
-                "--stokes", p.stokes, "--weighting", p.weighting, "--robust", p.robust,
-                "--pblimit", p.pblimit, "--deconvolver", p.deconvolver, "--niter",
-                p.niter, '--cycleniter', p.cycleniter, '--threshold', p.threshold,
-                '--mask', p.mask, '--gridder', p.gridder, '--wprojplanes', p.wpplanes]
-        cmd = [map(str, _cmd) if type(_cmd) == list else str(_cmd) for _cmd in cmd]
-        cmd = reduce(operator.add, [i if type(i) == list else [i] for i in cmd])
-
-    # Perform MFS imaging
-    if p.image_mfs:
-        # Image Corrected Data
-        utils.log("...starting MFS image of CORRECTED data", f=p.lf, verbose=p.verbose)
-        icmd = cmd + ['--image_mfs', '--msin', p.datafile, '--spw', p.spw,
-                      "--source_ext", "{}_corr".format(p.source_ext)] 
-        ecode = subprocess.check_call(icmd)
-
-        # Image the split MODEL
-        if p.image_mdl:
-            utils.log("...starting MFS image of MODEL data", f=p.lf, verbose=p.verbose)
-            mfile = "{}.model".format(p.datafile)
-            if not os.path.exists(mfile):
-                utils.log("Didn't split model from datafile, which is required to image the model", f=p.lf, verbose=p.verbose)
-            else:
-                icmd = cmd + ['--image_mfs', '--msin', mfile, '--source_ext', "{}_model".format(p.source_ext)]
-                ecode = subprocess.check_call(icmd)
-
-        # Image the CORRECTED - MODEL residual
-        if p.image_res:
-            utils.log("...starting MFS image of CORRECTED - MODEL data", f=p.lf, verbose=p.verbose)
-            icmd = cmd + ['--image_mfs', '--msin', p.datafile, '--uvsub', "--source_ext", "{}_resid".format(p.source_ext)] 
-            ecode = subprocess.check_call(icmd)
-
-            # Apply gaintables to make CORRECTED column as it was
-            utils.log("...reapplying gaintables to CORRECTED data", f=p.lf, verbose=p.verbose)
-            cmd2 = p.casa + ["-c", "sky_cal.py", "--msin", p.datafile, "--gaintables"] + p.gaintables
-            ecode = subprocess.check_call(cmd2)
-
-    if p.image_spec:
-        # Perform Spectral Cube imaging
-        utils.log("...starting spectral cube imaging", f=p.lf, verbose=p.verbose)
-        icmd = cmd + ['--spec_cube', '--msin', p.datafile, "--source_ext", "{}_spec".format(p.source_ext),
-                      '--spec_start', str(p.spec_start), '--spec_end', str(p.spec_end),
-                      '--spec_dchan', str(p.spec_dchan)] 
-        ecode = subprocess.check_call(icmd)
-
-        # Collate output images and Run a Source Extraction
-        img_cube = sorted(glob.glob("{}.{}{}.spec????.image.fits".format(p.datafile, p.source, p.source_ext)))
-        if p.source_extract:
-            utils.log("...extracting {} source spectra".format(p.source), f=p.lf, verbose=p.verbose)
-            if len(img_cube) == 0:
-                utils.log("...no image cube files found, cannot extract spectrum", f=p.lf, verbose=p.verbose)
-            else:
-                cmd = ["source_extract.py", "--source", p.source, "--radius", p.radius, '--pols'] \
-                      + p.pols + ["--outdir", p.out_dir, "--gaussfit_mult", p.gauss_mult, "--source_ext", p.source_ext]
-                if p.overwrite:
-                    cmd += ["--overwrite"]
-                if p.plot_fit:
-                    cmd += ["--plot_fit"]
-                cmd += img_cube
-                cmd = map(str, cmd)
-                ecode = subprocess.check_call(cmd)
 
     if p.image_mdl_spec:
         # Perform Spectral Cube imaging of model
@@ -576,6 +507,70 @@ def image(**kwargs):
                 cmd = map(str, cmd)
                 ecode = subprocess.check_call(cmd)
 
+
+
+# Define imaging functions
+def img_cmd(**kwargs):
+    p = Dict2Obj(**kwargs)
+    cmd = p.casa + ["-c", "sky_image.py"]
+    cmd += ["--source", p.source, "--out_dir", p.out_dir,
+            "--pxsize", p.pxsize, "--imsize", p.imsize,
+            "--uvrange", p.uvrange, "--timerange", p.timerange,
+            "--stokes", p.stokes, "--weighting", p.weighting, "--robust", p.robust,
+            "--pblimit", p.pblimit, "--deconvolver", p.deconvolver, "--niter",
+            p.niter, '--cycleniter', p.cycleniter, '--threshold', p.threshold,
+            '--mask', p.mask, '--gridder', p.gridder, '--wprojplanes', p.wpplanes]
+    cmd = [map(str, _cmd) if type(_cmd) == list else str(_cmd) for _cmd in cmd]
+    cmd = reduce(operator.add, [i if type(i) == list else [i] for i in cmd])
+    return cmd
+
+def mfs_image(**kwargs):
+    cmd = img_cmd(**kwargs)
+    p = Dict2Obj(**kwargs)
+
+    # Perform MFS imaging
+    utils.log("...starting MFS image of {} data".format(p.mfstype), f=p.lf, verbose=p.verbose)
+    icmd = cmd + ['--image_mfs', '--msin', p.datafile, '--spw', p.spw,
+                  "--source_ext", "{}_{}".format(p.source_ext, p.mfstype)]
+    if p.mfstype == 'resid':
+        icmd += ['--uvsub']
+
+    ecode = subprocess.check_call(icmd)
+
+    if p.mfstype == 'resid':
+        # Apply gaintables to make CORRECTED column as it was
+        utils.log("...reapplying gaintables to CORRECTED data", f=p.lf, verbose=p.verbose)
+        cmd2 = p.casa + ["-c", "sky_cal.py", "--msin", p.datafile, "--gaintables"] + p.gaintables
+        ecode = subprocess.check_call(cmd2)
+
+def spec_image(**kwargs):
+    cmd = img_cmd(**kwargs)
+
+    # Perform Spectral Cube imaging
+    utils.log("...starting {} spectral cube imaging".format(p.datafile), f=p.lf, verbose=p.verbose)
+    icmd = cmd + ['--spec_cube', '--msin', p.datafile, "--source_ext", "{}_spec".format(p.source_ext),
+                  '--spec_start', str(p.spec_start), '--spec_end', str(p.spec_end),
+                  '--spec_dchan', str(p.spec_dchan)] 
+    ecode = subprocess.check_call(icmd)
+
+    # Collate output images and run a source extraction
+    img_cube_template = "{}.{}{}_spec.chan????.image.fits".format(p.datafile, p.source, p.source_ext)
+    img_cube = sorted(glob.glob(img_cube_template))
+    if p.source_extract:
+        utils.log("...extracting {} from {} cube".format(p.source, img_cube_template), f=p.lf, verbose=p.verbose)
+        if len(img_cube) == 0:
+            utils.log("...no image cube files found, cannot extract spectrum", f=p.lf, verbose=p.verbose)
+        else:
+            cmd = ["source_extract.py", "--source", p.source, "--radius", p.radius, '--pols'] \
+                  + p.pols + ["--outdir", p.out_dir, "--gaussfit_mult", p.gauss_mult, "--source_ext", p.source_ext]
+            if p.overwrite:
+                cmd += ["--overwrite"]
+            if p.plot_fit:
+                cmd += ["--plot_fit"]
+            cmd += img_cube
+            cmd = map(str, cmd)
+            ecode = subprocess.check_call(cmd)
+
 # Start Calibration
 if params['di_cal']:
     # start block
@@ -588,8 +583,43 @@ if params['di_cal']:
     # Perform Calibration
     gaintables = calibrate(**dict(cal_kwargs.items() + global_vars(varlist).items()))
 
-    # Perform Imaging
-    image(**dict(cal_kwargs.items() + global_vars(varlist).items()))
+    # Perform MFS of corrected data
+    if cal_kwargs['image_mfs']:
+        cal_kwargs = dict(algs['gen_cal'].items() + algs['di_cal'].items())
+        cal_kwargs['mfstype'] = 'corr'
+        mfs_image(**dict(cal_kwargs.items() + global_vars(varlist).items()))
+
+    # Perform MFS of model data
+    if cal_kwargs['image_mdl']:
+        cal_kwargs = dict(algs['gen_cal'].items() + algs['di_cal'].items())
+        mfile = "{}.model".format(cal_kwargs['datafile'])
+        if not os.path.exists(mfile):
+            utils.log("Didn't split model from datafile, which is required to image the model", f=lf, verbose=verbose)
+        else:
+            cal_kwargs['datafile'] = mfile
+            cal_kwargs['mfs_type'] = 'model'
+            mfs_image(**dict(cal_kwargs.items() + global_vars(varlist).items()))
+
+    # Perform MFS of residual data
+    if cal_kwargs['image_res']:
+        cal_kwargs = dict(algs['gen_cal'].items() + algs['di_cal'].items())
+        cal_kwargs['mfs_type'] = 'resid'
+        mfs_image(**dict(cal_kwargs.items() + global_vars(varlist).items()))
+
+    # Get spectral cube of corrected data
+    if cal_kwargs['image_spec']:
+        cal_kwargs = dict(algs['gen_cal'].items() + algs['di_cal'].items())
+        spec_image(**dict(cal_kwargs.items() + global_vars(varlist).items()))
+
+    # Get spectral cube of corrected data
+    if cal_kwargs['image_mdl_spec']:
+        cal_kwargs = dict(algs['gen_cal'].items() + algs['di_cal'].items())
+        mfile = "{}.model".format(cal_kwargs['datafile'])
+        if not os.path.exists(mfile):
+            utils.log("Didn't split model from datafile, which is required to image the model", f=lf, verbose=verbose)
+        else:
+            cal_kwargs['datafile'] = mfile
+            spec_image(**dict(cal_kwargs.items() + global_vars(varlist).items()))
 
     # end block
     time2 = datetime.utcnow()
@@ -686,8 +716,43 @@ if params['dd_cal']:
     cmd = casa + ['-c', 'sky_cal.py', '--msin', datafile, '--gaintables'] + gaintables
     ecode = subprocess.check_call(cmd)
 
-    # Perform Imaging
-    image(**dict(cal_kwargs.items() + global_vars(varlist).items()))
+    # Perform MFS of corrected data
+    if cal_kwargs['image_mfs']:
+        cal_kwargs = dict(algs['gen_cal'].items() + algs['dd_cal'].items())
+        cal_kwargs['mfstype'] = 'corr'
+        mfs_image(**dict(cal_kwargs.items() + global_vars(varlist).items()))
+
+    # Perform MFS of model data
+    if cal_kwargs['image_mdl']:
+        cal_kwargs = dict(algs['gen_cal'].items() + algs['dd_cal'].items())
+        mfile = "{}.model".format(cal_kwargs['datafile'])
+        if not os.path.exists(mfile):
+            utils.log("Didn't split model from datafile, which is required to image the model", f=lf, verbose=verbose)
+        else:
+            cal_kwargs['datafile'] = mfile
+            cal_kwargs['mfs_type'] = 'model'
+            mfs_image(**dict(cal_kwargs.items() + global_vars(varlist).items()))
+
+    # Perform MFS of residual data
+    if cal_kwargs['image_res']:
+        cal_kwargs = dict(algs['gen_cal'].items() + algs['dd_cal'].items())
+        cal_kwargs['mfs_type'] = 'resid'
+        mfs_image(**dict(cal_kwargs.items() + global_vars(varlist).items()))
+
+    # Get spectral cube of corrected data
+    if cal_kwargs['image_spec']:
+        cal_kwargs = dict(algs['gen_cal'].items() + algs['dd_cal'].items())
+        spec_image(**dict(cal_kwargs.items() + global_vars(varlist).items()))
+
+    # Get spectral cube of corrected data
+    if cal_kwargs['image_mdl_spec']:
+        cal_kwargs = dict(algs['gen_cal'].items() + algs['dd_cal'].items())
+        mfile = "{}.model".format(cal_kwargs['datafile'])
+        if not os.path.exists(mfile):
+            utils.log("Didn't split model from datafile, which is required to image the model", f=lf, verbose=verbose)
+        else:
+            cal_kwargs['datafile'] = mfile
+            spec_image(**dict(cal_kwargs.items() + global_vars(varlist).items()))
 
     # end block
     time2 = datetime.utcnow()

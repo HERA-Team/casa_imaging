@@ -123,7 +123,9 @@ algorithm :
     gain_ext  : ''        # str, file extension of gain tables 
     gaintables  : ''      # pre-calibration gain tables to apply first
     # MFS Imaging Parameters
-    image_mfs   : True      # make an MFS image with parameters below
+    image_mfs   : True      # bool, make an MFS image of corrected data with parameters below
+    image_mdl   : False     # bool, make an MFS image of the split MODEL
+    image_res   : False     # bool, perform a UVsub and make MFS image of residual
     source_ext  : ""        # str, extension to source name for image files
     niter       :         # int, total number of CLEAN iterations
       - 100
@@ -147,8 +149,6 @@ algorithm :
     gridder     : 'standard' # str, gridder to use: [standard, wproject]
     wpplanes    : 1         # int, wprojectplanes for wprojection
     pblimit     : -1        # float, pb response cut
-    image_mdl   : False     # bool, make an MFS image of the split MODEL
-    image_res   : False     # bool, perform a UVsub and make MFS image of residual
     # Spectral Imaging Parameters
     image_spec  : False     # make a coarse spectral cube via multiple MFS images
     image_mdl_spec : False  # make a coarse spec cube of the model
