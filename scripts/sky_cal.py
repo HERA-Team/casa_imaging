@@ -70,13 +70,6 @@ if __name__ == "__main__":
     # get vars
     verbose = args.silence is False
 
-    # configure refant
-    if args.refant is None and (args.KGcal is True or args.Acal is True or args.BPcal is True):
-        raise AttributeError("if calibrating, refant needs to be specified")
-    if args.refant is not None:
-        refants = args.refant.split(',')
-        refants = ["HH" + ra for ra in refants]
-
     # get phase center
     if args.source is not None:
         loc_file = "{}.loc".format(args.source)
@@ -108,8 +101,22 @@ if __name__ == "__main__":
                     os.remove(msf)
                 except OSError:
                     shutil.rmtree(msf)
+        echo("writing {}".format(msin))
         importuvfits(uvfits, msin)
-        echo("{}".format(msin))
+
+    # get antenna name to station mapping
+    tb.open("{}/ANTENNA".format(msin))
+    antstn = tb.getcol("STATION")
+    tb.close()
+    antstn = [stn for stn in antstn if stn != '']
+    antids = [re.findall('\d+', stn)[0] for stn in antstn]
+    antid2stn = dict(zip(antids, antstn))
+
+    # configure refant
+    if args.refant is None and (args.KGcal is True or args.Acal is True or args.BPcal is True):
+        raise AttributeError("if calibrating, refant needs to be specified")
+    if args.refant is not None:
+        refants = [antid2std[ra] for ra in args.refant.split(',')]
 
     # rephase to source
     if args.source is not None:
@@ -140,7 +147,7 @@ if __name__ == "__main__":
 
     # flag bad ants
     if args.ex_ants is not None:
-        args.ex_ants = ','.join(map(lambda x: "HH"+x, args.ex_ants.split(',')))
+        args.ex_ants = ','.join([antid2stn[xa] for xa in args.ex_ants.split(',')])
         echo("...flagging bad ants: {}".format(args.ex_ants), type=1)
         flagdata(msin, mode='manual', antenna=args.ex_ants)
 

@@ -196,6 +196,41 @@ if params['prep_data']:
         if os.path.splitext(outfile)[1] == '.uvfits':
             outfile = os.path.splitext(outfile)[0]
 
+        # renumber antennas (and antenna names!) if above 254
+        if uvd.antenna_numbers.max() > 254:
+            large_ant_nums = sorted(list(uvd.antenna_numbers[np.where(uvd.antenna_numbers > 254)[0]]))
+            new_nums = sorted(list(set(range(255)) - set(uvd.antenna_numbers)))
+            if len(new_nums) < len(large_ant_nums):
+                raise ValueError('too many antennas in dataset, cannot renumber all below 255')
+            new_nums = new_nums[-1 * len(large_ant_nums):]
+            renumber_dict = dict(list(zip(large_ant_nums, new_nums)))
+
+            history = ''
+            name_prefix = os.path.commonprefix(uvd.antenna_names)
+            for ant_in, ant_out in renumber_dict.items():
+                if verbose:
+                    msg = "renumbering {a1} to {a2}".format(a1=ant_in, a2=ant_out)
+                    print(msg)
+                history += '{}\n'.format(msg)
+
+                wh_ant_num = np.where(uvd.antenna_numbers == ant_in)[0]
+                wh_ant1_arr = np.where(uvd.ant_1_array == ant_in)[0]
+                wh_ant2_arr = np.where(uvd.ant_2_array == ant_in)[0]
+
+                uvd.antenna_numbers[wh_ant_num] = ant_out
+                uvd.antenna_names[wh_ant_num[0]] = "RN{:d}".format(ant_out)
+                uvd.ant_1_array[wh_ant1_arr] = ant_out
+                uvd.ant_2_array[wh_ant2_arr] = ant_out
+
+            uvd.baseline_array = uvd.antnums_to_baseline(uvd.ant_1_array, uvd.ant_2_array)
+            uvd.history = '{}\n{}'.format(history, uvd.history)
+            uvd.check()
+
+            # write renumbering dictionary to .npz
+            np.savez("{}.renumber.npz".format(outfile),
+                     renumber=dict(zip(renumber_dict.values(), renumber_dict.keys())),
+                     history="Access dictionary via f['renumber'].item()")
+
         # write to file
         if uvd.phase_type == 'phased':
             # write uvfits

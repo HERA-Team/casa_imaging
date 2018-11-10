@@ -21,6 +21,7 @@ import glob
 from multiprocessing import Pool
 import traceback
 import copy
+import re
 
 ## Set Arguments
 # Required Arguments
@@ -197,8 +198,16 @@ if __name__ == "__main__":
                     os.remove(msf)
                 except OSError:
                     shutil.rmtree(msf)
+        log("writing {}".format(msin))
         importuvfits(uvfits, msin)
-        log("creating {}".format(msin))
+
+    # get antenna name to station mapping
+    tb.open("{}/ANTENNA".format(msin))
+    antstn = tb.getcol("STATION")
+    tb.close()
+    antstn = [stn for stn in antstn if stn != '']
+    antids = [re.findall('\d+', stn)[0] for stn in antstn]
+    antid2stn = dict(zip(antids, antstn))
 
     # rephase to source
     if fixdir is not None:
@@ -217,7 +226,7 @@ if __name__ == "__main__":
 
     # flag bad ants
     if args.ex_ants is not None:
-        args.ex_ants = ','.join(map(lambda x: "HH"+x, args.ex_ants.split(',')))
+        args.ex_ants = ','.join([antid2stn[xa] for xa in args.ex_ants.split(',')])
         log("...flagging bad ants: {}".format(args.ex_ants), type=1)
         flagdata(msin, mode='manual', antenna=args.ex_ants)
 
