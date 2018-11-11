@@ -592,7 +592,7 @@ if params['di_cal']:
     # Perform MFS of model data
     if cal_kwargs['image_mdl']:
         cal_kwargs = dict(algs['gen_cal'].items() + algs['di_cal'].items())
-        mfile = "{}.model".format(cal_kwargs['datafile'])
+        mfile = "{}.model".format(datafile)
         if not os.path.exists(mfile):
             utils.log("Didn't split model from datafile, which is required to image the model", f=lf, verbose=verbose)
         else:
@@ -725,7 +725,7 @@ if params['dd_cal']:
     # Perform MFS of model data
     if cal_kwargs['image_mdl']:
         cal_kwargs = dict(algs['gen_cal'].items() + algs['dd_cal'].items())
-        mfile = "{}.model".format(cal_kwargs['datafile'])
+        mfile = "{}.model".format(datafile)
         if not os.path.exists(mfile):
             utils.log("Didn't split model from datafile, which is required to image the model", f=lf, verbose=verbose)
         else:
