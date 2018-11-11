@@ -597,13 +597,13 @@ if params['di_cal']:
             utils.log("Didn't split model from datafile, which is required to image the model", f=lf, verbose=verbose)
         else:
             cal_kwargs['datafile'] = mfile
-            cal_kwargs['mfs_type'] = 'model'
+            cal_kwargs['mfstype'] = 'model'
             mfs_image(**dict(cal_kwargs.items() + global_vars(varlist).items()))
 
     # Perform MFS of residual data
     if cal_kwargs['image_res']:
         cal_kwargs = dict(algs['gen_cal'].items() + algs['di_cal'].items())
-        cal_kwargs['mfs_type'] = 'resid'
+        cal_kwargs['mfstype'] = 'resid'
         mfs_image(**dict(cal_kwargs.items() + global_vars(varlist).items()))
 
     # Get spectral cube of corrected data
@@ -730,13 +730,13 @@ if params['dd_cal']:
             utils.log("Didn't split model from datafile, which is required to image the model", f=lf, verbose=verbose)
         else:
             cal_kwargs['datafile'] = mfile
-            cal_kwargs['mfs_type'] = 'model'
+            cal_kwargs['mfstype'] = 'model'
             mfs_image(**dict(cal_kwargs.items() + global_vars(varlist).items()))
 
     # Perform MFS of residual data
     if cal_kwargs['image_res']:
         cal_kwargs = dict(algs['gen_cal'].items() + algs['dd_cal'].items())
-        cal_kwargs['mfs_type'] = 'resid'
+        cal_kwargs['mfstype'] = 'resid'
         mfs_image(**dict(cal_kwargs.items() + global_vars(varlist).items()))
 
     # Get spectral cube of corrected data
