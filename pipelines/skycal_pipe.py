@@ -491,11 +491,10 @@ def img_cmd(**kwargs):
             '--mask', p.mask, '--gridder', p.gridder, '--wprojplanes', p.wpplanes]
     cmd = [map(str, _cmd) if type(_cmd) == list else str(_cmd) for _cmd in cmd]
     cmd = reduce(operator.add, [i if type(i) == list else [i] for i in cmd])
-    return cmd
+    return cmd, p
 
 def mfs_image(**kwargs):
-    cmd = img_cmd(**kwargs)
-    p = Dict2Obj(**kwargs)
+    cmd, p = img_cmd(**kwargs)
 
     # Perform MFS imaging
     utils.log("...starting MFS image of {} data".format(p.mfstype), f=p.lf, verbose=p.verbose)
@@ -513,7 +512,7 @@ def mfs_image(**kwargs):
         ecode = subprocess.check_call(cmd2)
 
 def spec_image(**kwargs):
-    cmd = img_cmd(**kwargs)
+    cmd, p = img_cmd(**kwargs)
 
     # Perform Spectral Cube imaging
     utils.log("...starting {} spectral cube imaging".format(p.datafile), f=p.lf, verbose=p.verbose)
