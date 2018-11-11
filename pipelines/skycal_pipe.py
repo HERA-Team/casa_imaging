@@ -478,37 +478,6 @@ def calibrate(**kwargs):
     return gtables
 
 
-    if p.image_mdl_spec:
-        # Perform Spectral Cube imaging of model
-        utils.log("...starting Spectral Cube imaging of MODEL data", f=p.lf, verbose=p.verbose)
-        mfile = "{}.model".format(p.datafile)
-        if not os.path.exists(mfile):
-            utils.log("Didn't split model from datafile, which is required to image the model", f=p.lf, verbose=p.verbose)
-        else:
-            icmd = cmd + ['--msin', mfile, '--source_ext', "{}_mdlspec".format(p.source_ext),
-                          '--spec_cube', '--spec_start', str(p.spec_start),
-                          '--spec_end', str(p.spec_end), '--spec_dchan', str(p.spec_dchan)]
-        ecode = subprocess.check_call(icmd)
-
-        # Collate output images and Run a Source Extraction
-        img_cube = sorted(glob.glob("{}.{}{}.spec????.image.fits".format(mfile, p.source, p.source_ext)))
-        if p.source_extract:
-            utils.log("...extracting {} source spectra".format(p.source), f=p.lf, verbose=p.verbose)
-            if len(img_cube) == 0:
-                utils.log("...no image cube files found, cannot extract spectrum", f=p.lf, verbose=p.verbose)
-            else:
-                cmd = ["source_extract.py", "--source", p.source, "--radius", p.radius, '--pols'] \
-                      + p.pols + ["--outdir", p.out_dir, "--gaussfit_mult", p.gauss_mult, "--source_ext", p.source_ext]
-                if p.overwrite:
-                    cmd += ["--overwrite"]
-                if p.plot_fit:
-                    cmd += ["--plot_fit"]
-                cmd += img_cube
-                cmd = map(str, cmd)
-                ecode = subprocess.check_call(cmd)
-
-
-
 # Define imaging functions
 def img_cmd(**kwargs):
     p = Dict2Obj(**kwargs)
@@ -587,6 +556,7 @@ if params['di_cal']:
     if cal_kwargs['image_mfs']:
         cal_kwargs = dict(algs['gen_cal'].items() + algs['di_cal'].items())
         cal_kwargs['mfstype'] = 'corr'
+        cal_kwargs['datafile'] = datafile
         mfs_image(**dict(cal_kwargs.items() + global_vars(varlist).items()))
 
     # Perform MFS of model data
@@ -604,11 +574,13 @@ if params['di_cal']:
     if cal_kwargs['image_res']:
         cal_kwargs = dict(algs['gen_cal'].items() + algs['di_cal'].items())
         cal_kwargs['mfstype'] = 'resid'
+        cal_kwargs['datafile'] = datafile
         mfs_image(**dict(cal_kwargs.items() + global_vars(varlist).items()))
 
     # Get spectral cube of corrected data
     if cal_kwargs['image_spec']:
         cal_kwargs = dict(algs['gen_cal'].items() + algs['di_cal'].items())
+        cal_kwargs['datafile'] = datafile
         spec_image(**dict(cal_kwargs.items() + global_vars(varlist).items()))
 
     # Get spectral cube of corrected data
@@ -720,6 +692,7 @@ if params['dd_cal']:
     if cal_kwargs['image_mfs']:
         cal_kwargs = dict(algs['gen_cal'].items() + algs['dd_cal'].items())
         cal_kwargs['mfstype'] = 'corr'
+        cal_kwargs['datafile'] = datafile
         mfs_image(**dict(cal_kwargs.items() + global_vars(varlist).items()))
 
     # Perform MFS of model data
@@ -737,11 +710,13 @@ if params['dd_cal']:
     if cal_kwargs['image_res']:
         cal_kwargs = dict(algs['gen_cal'].items() + algs['dd_cal'].items())
         cal_kwargs['mfstype'] = 'resid'
+        cal_kwargs['datafile'] = datafile
         mfs_image(**dict(cal_kwargs.items() + global_vars(varlist).items()))
 
     # Get spectral cube of corrected data
     if cal_kwargs['image_spec']:
         cal_kwargs = dict(algs['gen_cal'].items() + algs['dd_cal'].items())
+        cal_kwargs['datafile'] = datafile
         spec_image(**dict(cal_kwargs.items() + global_vars(varlist).items()))
 
     # Get spectral cube of corrected data
