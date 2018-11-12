@@ -419,7 +419,7 @@ def calibrate(**kwargs):
             utils.log("...couldn't find a .npz file for all input .cal tables, can't export to calfits", f=p.lf, verbose=p.verbose)
 
         else:
-            calfits_fname = "{}.{}{}.calfits".format(mirvis, p.source, p.gain_ext)
+            calfits_fname = "{}.{}{}.calfits".format(os.path.basename(mirvis), p.source, p.gain_ext)
             cmd = ['skynpz2calfits.py', "--fname", calfits_fname, "--uv_file", mirvis, '--out_dir', p.out_dir]
             if p.overwrite:
                 cmd += ["--overwrite"]
@@ -465,7 +465,7 @@ def calibrate(**kwargs):
                 # convert to cal
                 bfile = gts[matchB.index(True)]
                 btot_file = os.path.join(out_dir, "{}{}.Btotal.cal".format(os.path.basename(p.datafile), gext))
-                cmd = p.casa + ["-c", "calfits_to_Bcal.py", "--cfits", calfits_fname, "--inp_cfile", bfile,"--out_cfile", btot_file]
+                cmd = p.casa + ["-c", "calfits_to_Bcal.py", "--cfits", os.path.join(p.out_dir, calfits_fname), "--inp_cfile", bfile,"--out_cfile", btot_file]
                 if overwrite:
                     cmd += ["--overwrite"]
                 ecode = subprocess.check_call(cmd)
@@ -554,13 +554,13 @@ if params['di_cal']:
 
     # Perform MFS of corrected data
     if cal_kwargs['image_mfs']:
-        kwargs = dict(global_vars(varlist).items() + cal_kwargs.items())
+        kwargs = dict(cal_kwargs.items() + global_vars(varlist).items())
         kwargs['mfstype'] = 'corr'
         mfs_image(**kwargs)
 
     # Perform MFS of model data
     if cal_kwargs['image_mdl']:
-        kwargs = dict(global_vars(varlist).items() + cal_kwargs.items())
+        kwargs = dict(cal_kwargs.items() + global_vars(varlist).items())
         mfile = "{}.model".format(datafile)
         if not os.path.exists(mfile):
             utils.log("Didn't split model from datafile, which is required to image the model", f=lf, verbose=verbose)
@@ -571,18 +571,18 @@ if params['di_cal']:
 
     # Perform MFS of residual data
     if cal_kwargs['image_res']:
-        kwargs = dict(global_vars(varlist).items() + cal_kwargs.items())
+        kwargs = dict(cal_kwargs.items() + global_vars(varlist).items())
         kwargs['mfstype'] = 'resid'
         mfs_image(**kwargs)
 
     # Get spectral cube of corrected data
     if cal_kwargs['image_spec']:
-        kwargs = dict(global_vars(varlist).items() + cal_kwargs.items())
+        kwargs = dict(cal_kwargs.items() + global_vars(varlist).items())
         spec_image(**kwargs)
 
     # Get spectral cube of model data
     if cal_kwargs['image_mdl_spec']:
-        kwargs = dict(global_vars(varlist).items() + cal_kwargs.items())
+        kwargs = dict(cal_kwargs.items() + global_vars(varlist).items())
         mfile = "{}.model".format(datafile)
         if not os.path.exists(mfile):
             utils.log("Didn't split model from datafile, which is required to image the model", f=lf, verbose=verbose)
@@ -694,13 +694,13 @@ if params['dd_cal']:
 
     # Perform MFS of corrected data
     if cal_kwargs['image_mfs']:
-        kwargs = dict(global_vars(varlist).items() + cal_kwargs.items())
+        kwargs = dict(cal_kwargs.items() + global_vars(varlist).items())
         kwargs['mfstype'] = 'corr'
         mfs_image(**kwargs)
 
     # Perform MFS of model data
     if cal_kwargs['image_mdl']:
-        kwargs = dict(global_vars(varlist).items() + cal_kwargs.items())
+        kwargs = dict(cal_kwargs.items() + global_vars(varlist).items())
         mfile = "{}.model".format(datafile)
         if not os.path.exists(mfile):
             utils.log("Didn't split model from datafile, which is required to image the model", f=lf, verbose=verbose)
@@ -711,18 +711,18 @@ if params['dd_cal']:
 
     # Perform MFS of residual data
     if cal_kwargs['image_res']:
-        kwargs = dict(global_vars(varlist).items() + cal_kwargs.items())
+        kwargs = dict(cal_kwargs.items() + global_vars(varlist).items())
         kwargs['mfstype'] = 'resid'
         mfs_image(**kwargs)
 
     # Get spectral cube of corrected data
     if cal_kwargs['image_spec']:
-        kwargs = dict(global_vars(varlist).items() + cal_kwargs.items())
+        kwargs = dict(cal_kwargs.items() + global_vars(varlist).items())
         spec_image(**kwargs)
 
     # Get spectral cube of model data
     if cal_kwargs['image_mdl_spec']:
-        kwargs = dict(global_vars(varlist).items() + cal_kwargs.items())
+        kwargs = dict(cal_kwargs.items() + global_vars(varlist).items())
         mfile = "{}.model".format(datafile)
         if not os.path.exists(mfile):
             utils.log("Didn't split model from datafile, which is required to image the model", f=lf, verbose=verbose)
