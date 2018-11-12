@@ -557,13 +557,13 @@ if params['di_cal']:
     utils.log(json.dumps(algs['di_img'], indent=1) + '\n', f=lf, verbose=verbose)
 
     # Perform MFS of corrected data
-    if cal_kwargs['image_mfs']:
+    if img_kwargs['image_mfs']:
         kwargs = dict(img_kwargs.items() + global_vars(varlist).items())
         kwargs['mfstype'] = 'corr'
         mfs_image(**kwargs)
 
     # Perform MFS of model data
-    if cal_kwargs['image_mdl']:
+    if img_kwargs['image_mdl']:
         kwargs = dict(img_kwargs.items() + global_vars(varlist).items())
         mfile = "{}.model".format(datafile)
         if not os.path.exists(mfile):
@@ -574,18 +574,18 @@ if params['di_cal']:
             mfs_image(**kwargs)
 
     # Perform MFS of residual data
-    if cal_kwargs['image_res']:
+    if img_kwargs['image_res']:
         kwargs = dict(img_kwargs.items() + global_vars(varlist).items())
         kwargs['mfstype'] = 'resid'
         mfs_image(**kwargs)
 
     # Get spectral cube of corrected data
-    if cal_kwargs['image_spec']:
+    if img_kwargs['image_spec']:
         kwargs = dict(img_kwargs.items() + global_vars(varlist).items())
         spec_image(**kwargs)
 
     # Get spectral cube of model data
-    if cal_kwargs['image_mdl_spec']:
+    if img_kwargs['image_mdl_spec']:
         kwargs = dict(img_kwargs.items() + global_vars(varlist).items())
         mfile = "{}.model".format(datafile)
         if not os.path.exists(mfile):
@@ -702,13 +702,13 @@ if params['dd_cal']:
     utils.log(json.dumps(algs['dd_img'], indent=1) + '\n', f=lf, verbose=verbose)
 
     # Perform MFS of corrected data
-    if cal_kwargs['image_mfs']:
+    if img_kwargs['image_mfs']:
         kwargs = dict(img_kwargs.items() + global_vars(varlist).items())
         kwargs['mfstype'] = 'corr'
         mfs_image(**kwargs)
 
     # Perform MFS of model data
-    if cal_kwargs['image_mdl']:
+    if img_kwargs['image_mdl']:
         kwargs = dict(img_kwargs.items() + global_vars(varlist).items())
         mfile = "{}.model".format(datafile)
         if not os.path.exists(mfile):
@@ -719,18 +719,18 @@ if params['dd_cal']:
             mfs_image(**kwargs)
 
     # Perform MFS of residual data
-    if cal_kwargs['image_res']:
+    if img_kwargs['image_res']:
         kwargs = dict(img_kwargs.items() + global_vars(varlist).items())
         kwargs['mfstype'] = 'resid'
         mfs_image(**kwargs)
 
     # Get spectral cube of corrected data
-    if cal_kwargs['image_spec']:
+    if img_kwargs['image_spec']:
         kwargs = dict(img_kwargs.items() + global_vars(varlist).items())
         spec_image(**kwargs)
 
     # Get spectral cube of model data
-    if cal_kwargs['image_mdl_spec']:
+    if img_kwargs['image_mdl_spec']:
         kwargs = dict(img_kwargs.items() + global_vars(varlist).items())
         mfile = "{}.model".format(datafile)
         if not os.path.exists(mfile):
