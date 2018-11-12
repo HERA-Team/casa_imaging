@@ -122,6 +122,9 @@ algorithm :
     split_model : True   # str, split MODEL column into a new .model MS
     gain_ext  : ''        # str, file extension of gain tables 
     gaintables  : ''      # pre-calibration gain tables to apply first
+
+  # Direction Independent Imaging Parameters
+  di_img : 
     # MFS Imaging Parameters
     image_mfs   : True      # bool, make an MFS image of corrected data with parameters below
     image_mdl   : False     # bool, make an MFS image of the split MODEL
@@ -202,6 +205,9 @@ algorithm :
     split_model : True   # str, split MODEL column into a new .model MS
     gain_ext  : ''        # str, file extension of gain tables 
     gaintables  : ''            # pre-calibration gain tables to apply first
+
+  # Direction Dependent Imaging Parameters
+  dd_img : 
     # Parameters for MFS Imaging
     image_mfs   : True      # make an MFS image with parameters below
     source_ext  : "_peel"        # str, extension to source name for image files
@@ -234,4 +240,12 @@ algorithm :
     spec_start  : 0         # int, if image_spec, this is starting channel
     spec_end    : 1024      # int, if image_spec, this is ending channel
     spec_dchan  : 250       # int, if image_spec, this is Nchans per MFS image
+    # Source Extraction Parameters
+    source_extract  : True    # bool, if image_spec, extract spectrum from output image cube
+    pols        : [-5, -6]  # stokes polarizations to extract
+    radius      : 1         # radius around source in degrees to estimate peak flux
+    gauss_mult  : 1.5       # Coefficient of PSF width to use as Gaussian fit mask
+    plot_fit    : False     # plot fit and residual
+
+
 

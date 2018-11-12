@@ -477,7 +477,6 @@ def calibrate(**kwargs):
 
     return gtables
 
-
 # Define imaging functions
 def img_cmd(**kwargs):
     p = Dict2Obj(**kwargs)
@@ -552,15 +551,20 @@ if params['di_cal']:
     kwargs.update(cal_kwargs)
     gaintables = calibrate(**kwargs)
 
+    # Peform Imaging
+    img_kwargs = copy.deepcopy(dict(algs['gen_cal'].items() + algs['di_img'].items()))
+    utils.log("\n...starting DI imaging\n", f=lf, verbose=verbose)
+    utils.log(json.dumps(algs['di_img'], indent=1) + '\n', f=lf, verbose=verbose)
+
     # Perform MFS of corrected data
     if cal_kwargs['image_mfs']:
-        kwargs = dict(cal_kwargs.items() + global_vars(varlist).items())
+        kwargs = dict(img_kwargs.items() + global_vars(varlist).items())
         kwargs['mfstype'] = 'corr'
         mfs_image(**kwargs)
 
     # Perform MFS of model data
     if cal_kwargs['image_mdl']:
-        kwargs = dict(cal_kwargs.items() + global_vars(varlist).items())
+        kwargs = dict(img_kwargs.items() + global_vars(varlist).items())
         mfile = "{}.model".format(datafile)
         if not os.path.exists(mfile):
             utils.log("Didn't split model from datafile, which is required to image the model", f=lf, verbose=verbose)
@@ -571,18 +575,18 @@ if params['di_cal']:
 
     # Perform MFS of residual data
     if cal_kwargs['image_res']:
-        kwargs = dict(cal_kwargs.items() + global_vars(varlist).items())
+        kwargs = dict(img_kwargs.items() + global_vars(varlist).items())
         kwargs['mfstype'] = 'resid'
         mfs_image(**kwargs)
 
     # Get spectral cube of corrected data
     if cal_kwargs['image_spec']:
-        kwargs = dict(cal_kwargs.items() + global_vars(varlist).items())
+        kwargs = dict(img_kwargs.items() + global_vars(varlist).items())
         spec_image(**kwargs)
 
     # Get spectral cube of model data
     if cal_kwargs['image_mdl_spec']:
-        kwargs = dict(cal_kwargs.items() + global_vars(varlist).items())
+        kwargs = dict(img_kwargs.items() + global_vars(varlist).items())
         mfile = "{}.model".format(datafile)
         if not os.path.exists(mfile):
             utils.log("Didn't split model from datafile, which is required to image the model", f=lf, verbose=verbose)
@@ -678,7 +682,7 @@ if params['dd_cal']:
 
     # Recalibrate
     utils.log("...recalibrating with peeled visibilities", f=lf, verbose=verbose)
-    kwargs = dict(global_vars(varlist).items() + cal_kwargs.items())
+    kwargs = dict(global_vars(varlist).items() + cal_kwargs.items())  # add order here is important
     dd_gtables = calibrate(**kwargs)
 
     # append new gaintables
@@ -692,15 +696,20 @@ if params['dd_cal']:
     cmd = casa + ['-c', 'sky_cal.py', '--msin', datafile, '--gaintables'] + gaintables
     ecode = subprocess.check_call(cmd)
 
+    # Peform Imaging
+    img_kwargs = copy.deepcopy(dict(algs['gen_cal'].items() + algs['dd_img'].items()))
+    utils.log("\n...starting DD imaging\n", f=lf, verbose=verbose)
+    utils.log(json.dumps(algs['dd_img'], indent=1) + '\n', f=lf, verbose=verbose)
+
     # Perform MFS of corrected data
     if cal_kwargs['image_mfs']:
-        kwargs = dict(cal_kwargs.items() + global_vars(varlist).items())
+        kwargs = dict(img_kwargs.items() + global_vars(varlist).items())
         kwargs['mfstype'] = 'corr'
         mfs_image(**kwargs)
 
     # Perform MFS of model data
     if cal_kwargs['image_mdl']:
-        kwargs = dict(cal_kwargs.items() + global_vars(varlist).items())
+        kwargs = dict(img_kwargs.items() + global_vars(varlist).items())
         mfile = "{}.model".format(datafile)
         if not os.path.exists(mfile):
             utils.log("Didn't split model from datafile, which is required to image the model", f=lf, verbose=verbose)
@@ -711,18 +720,18 @@ if params['dd_cal']:
 
     # Perform MFS of residual data
     if cal_kwargs['image_res']:
-        kwargs = dict(cal_kwargs.items() + global_vars(varlist).items())
+        kwargs = dict(img_kwargs.items() + global_vars(varlist).items())
         kwargs['mfstype'] = 'resid'
         mfs_image(**kwargs)
 
     # Get spectral cube of corrected data
     if cal_kwargs['image_spec']:
-        kwargs = dict(cal_kwargs.items() + global_vars(varlist).items())
+        kwargs = dict(img_kwargs.items() + global_vars(varlist).items())
         spec_image(**kwargs)
 
     # Get spectral cube of model data
     if cal_kwargs['image_mdl_spec']:
-        kwargs = dict(cal_kwargs.items() + global_vars(varlist).items())
+        kwargs = dict(img_kwargs.items() + global_vars(varlist).items())
         mfile = "{}.model".format(datafile)
         if not os.path.exists(mfile):
             utils.log("Didn't split model from datafile, which is required to image the model", f=lf, verbose=verbose)
