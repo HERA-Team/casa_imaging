@@ -235,8 +235,11 @@ def skynpz2calfits(fname, uv_file, dly_files=None, amp_files=None, bp_files=None
             bandp_gains = np.array([bandp_gains[:, :, bp_ants.index(a)].T if a in bp_ants else np.zeros((bp_Nfreqs), dtype=np.complex) for a in ants])
             bandp_flags = np.array([bandp_flags[:, :, bp_ants.index(a)].T if a in bp_ants else np.ones((bp_Nfreqs), dtype=np.bool) for a in ants])
 
-            # broadcast flags to all antennas at freq channels that satisfy bp_flag_frac
-            flag_broadcast = (np.sum(bandp_flags, axis=0) / float(bandp_flags.shape[0])) > bp_flag_frac
+            # broadcast flags to all (unflagged) antennas at freq channels that satisfy bp_flag_frac
+            bp_Nants = bandp_gains.shape[0]
+            Nflagged = np.sum(bandp_flags, axis=0).astype(np.float)
+            Nants_flagged = np.sum(np.min(bandp_flags, axis=1), axis=0)
+            flag_broadcast = (Nflagged - Nants_flagged) / (bp_Nants - Nants_flagged) > bp_flag_frac
             if bp_broad_flags:
                 bandp_flags += np.repeat(flag_broadcast[None, :, :].astype(np.bool), Nants, 0)
 
