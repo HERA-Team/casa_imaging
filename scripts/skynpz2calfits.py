@@ -526,7 +526,7 @@ def skynpz2calfits(fname, uv_file, dly_files=None, amp_files=None, bp_files=None
             plt.close()
 
         # plot full bandpass
-        pname = os.path.join(outdir os.path.basename(os.path.splitext(fname)[0]+'.png'))
+        pname = os.path.join(outdir, os.path.basename(os.path.splitext(fname)[0]+'.png'))
         plot_bandpass(copy.deepcopy(gains), '', pname)
         if bp_gp_smooth:
             # plot residual with unsmoothed
