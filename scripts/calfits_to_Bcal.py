@@ -72,7 +72,7 @@ def calfits_to_Bcal(cfits, inp_cfile, out_cfile=None, overwrite=False):
 
     # real and imag are 0, 1 Image Array axes of fits file
     flags = data[:, 0, :, :, :, 2]
-    data = data[:, 0, :, :, :, 0].astype(np.complex) + 1j * data[:, 0, :, :, :, 1]
+    data = data[:, 0, :, :, :, 0].astype(np.complex) - 1j * data[:, 0, :, :, :, 1]  # CASA conjugates cal solutions...
 
     # extend to matching antennas
     Nants, Nfreqs, Ntimes, Npols = data.shape
