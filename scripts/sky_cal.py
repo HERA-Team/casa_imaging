@@ -117,7 +117,7 @@ if __name__ == "__main__":
     if args.refant is None and (args.KGcal is True or args.Acal is True or args.BPcal is True):
         raise AttributeError("if calibrating, refant needs to be specified")
     if args.refant is not None:
-        refants = [antid2stn[ra] for ra in args.refant.split(',')]
+        refants = [antid2stn[ra] for ra in args.refant.split(',') if ra in antid2stn]
 
     # rephase to source
     if args.source is not None:
@@ -148,7 +148,7 @@ if __name__ == "__main__":
 
     # flag bad ants
     if args.ex_ants is not None:
-        args.ex_ants = ','.join([antid2stn[xa] for xa in args.ex_ants.split(',')])
+        args.ex_ants = ','.join([antid2stn[xa] for xa in args.ex_ants.split(',') if xa in antid2stn])
         echo("...flagging bad ants: {}".format(args.ex_ants), type=1)
         flagdata(msin, mode='manual', antenna=args.ex_ants)
 

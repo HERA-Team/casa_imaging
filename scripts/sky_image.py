@@ -226,7 +226,7 @@ if __name__ == "__main__":
 
     # flag bad ants
     if args.ex_ants is not None:
-        args.ex_ants = ','.join([antid2stn[xa] for xa in args.ex_ants.split(',')])
+        args.ex_ants = ','.join([antid2stn[xa] for xa in args.ex_ants.split(',') if xa in antid2stn])
         log("...flagging bad ants: {}".format(args.ex_ants), type=1)
         flagdata(msin, mode='manual', antenna=args.ex_ants)
 
