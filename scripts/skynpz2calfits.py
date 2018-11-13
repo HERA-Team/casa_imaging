@@ -426,7 +426,7 @@ def skynpz2calfits(fname, uv_file, dly_files=None, amp_files=None, bp_files=None
             ax.set_xlabel("X [meters]", fontsize=14)
             ax.set_ylabel("Y [meters]", fontsize=14)
             ax.set_title("{} Delay solutions for {}".format(j, os.path.basename(dly_files[0])), fontsize=10)
-        pname = dly_files[-1]+'.png'
+        pname = os.path.join(outdir, os.path.basename(dly_files[-1]+'.png'))
         echo("...saving {}".format(pname), verbose=verbose)
         fig.savefig(pname, dpi=150, bbox_inches='tight', pad=0.05)
         plt.close()
@@ -451,7 +451,7 @@ def skynpz2calfits(fname, uv_file, dly_files=None, amp_files=None, bp_files=None
             ax.set_xlabel("X [meters]", fontsize=14)
             ax.set_ylabel("Y [meters]", fontsize=14)
             ax.set_title("{} Phase solutions for {}".format(j, os.path.basename(phs_files[0])), fontsize=10)
-        pname = phs_files[-1]+'.png'
+        pname = os.path.join(outdir, os.path.basename(phs_files[-1]+'.png'))
         echo("...saving {}".format(pname), verbose=verbose)
         fig.savefig(pname, dpi=150, bbox_inches='tight', pad=0.05)
         plt.close()
@@ -478,7 +478,7 @@ def skynpz2calfits(fname, uv_file, dly_files=None, amp_files=None, bp_files=None
             ax.set_xlabel("X [meters]", fontsize=14)
             ax.set_ylabel("Y [meters]", fontsize=14)
             ax.set_title("{} amplitude solutions for {}".format(j, os.path.basename(amp_files[0])), fontsize=10)
-        pname = amp_files[-1]+'.png'
+        pname = os.path.join(outdir, os.path.basename(amp_files[-1]+'.png'))
         echo("...saving {}".format(pname), verbose=verbose)
         fig.savefig(pname, dpi=150, bbox_inches='tight', pad=0.05)
         plt.close()
@@ -526,10 +526,11 @@ def skynpz2calfits(fname, uv_file, dly_files=None, amp_files=None, bp_files=None
             plt.close()
 
         # plot full bandpass
-        plot_bandpass(copy.deepcopy(gains), '', os.path.splitext(fname)[0]+'.png')
+        pname = os.path.join(outdir os.path.basename(os.path.splitext(fname)[0]+'.png'))
+        plot_bandpass(copy.deepcopy(gains), '', pname)
         if bp_gp_smooth:
             # plot residual with unsmoothed
-            plot_bandpass(copy.deepcopy(gains/_gains), "Smoothed / Unsmoothed", os.path.splitext(fname)[0]+'.resid.png')
+            plot_bandpass(copy.deepcopy(gains/_gains), "Smoothed / Unsmoothed", os.path.splitext(pname)[0]+'.resid.png')
 
 
 if __name__ == "__main__":
