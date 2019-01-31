@@ -62,11 +62,11 @@ if __name__ == "__main__":
     def deg2eq(ra, dec):
         _ra = ra / 15.0
         ra_h = int(np.floor(_ra))
-        ra_m = int(np.floor((_ra - ra_h) * 60))
-        ra_s = int(np.around(((_ra - ra_h) * 60 - ra_m) * 60))
+        ra_m = int(np.floor((_ra - ra_h) * 60.))
+        ra_s = int(np.around(((_ra - ra_h) * 60. - ra_m) * 60.))
         dec_d = int(np.floor(np.abs(dec)) * dec / np.abs(dec))
         dec_m = int(np.floor(np.abs(dec - dec_d) * 60.))
-        dec_s = int(np.abs(dec - dec_d) * 3600 - dec_m * 60)
+        dec_s = int(np.abs(dec - dec_d) * 3600. - dec_m * 60.)
         direction = "{:02d}h{:02d}m{:02.0f}s {:03d}d{:02d}m{:02.0f}s".format(ra_h, ra_m, ra_s, dec_d, dec_m, dec_s)
         return direction
 

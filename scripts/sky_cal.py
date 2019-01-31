@@ -26,7 +26,8 @@ a = argparse.ArgumentParser(description="Run with casa as: casa -c sky_image.py 
 a.add_argument('--script', '-c', type=str, help='name of this script', required=True)
 a.add_argument('--msin', default=None, type=str, help='path to a CASA measurement set. if fed a .uvfits, will convert to ms', required=True)
 # IO Arguments
-a.add_argument('--source', default=None, type=str, help='Name of the main source in the field.')
+a.add_argument("--source_ra", default=None, type=float, help="RA of source in J2000 degrees.")
+a.add_argument("--source_dec", default=None, type=float, help="Dec of source in J2000 degrees.")
 a.add_argument('--out_dir', default=None, type=str, help='output directory')
 a.add_argument("--silence", default=False, action='store_true', help="turn off output to stdout")
 a.add_argument("--gain_ext", default='', type=str, help="Extension for output gain tables, after the msin stem but before the *.cal suffix.")
@@ -72,13 +73,17 @@ if __name__ == "__main__":
     verbose = args.silence is False
 
     # get phase center
-    if args.source is not None:
-        loc_file = "{}.loc".format(args.source)
-        if not os.path.exists(loc_file):
-            raise ValueError("A {} file should exist holding its coords given as ha:am:as  deg:am:as".format(loc_file))
-        ra, dec = np.loadtxt('{}.loc'.format(args.source), dtype=str)
-        ra, dec = ra.split(':'), dec.split(':')
-        fixdir = 'J2000 {}h{}m{}s {}d{}m{}s'.format(*(ra+dec))
+    if args.source_ra is not None and args.source_dec is not None:
+        _ra = args.source_ra / 15.0
+        ra_h = int(np.floor(_ra))
+        ra_m = int(np.floor((_ra - ra_h) * 60.))
+        ra_s = int(np.around(((_ra - ra_h) * 60. - ra_m) * 60.))
+        dec_d = int(np.floor(np.abs(args.source_dec)) * args.source_dec / np.abs(args.source_dec))
+        dec_m = int(np.floor(np.abs(args.source_dec - dec_d) * 60.))
+        dec_s = int(np.abs(args.source_dec - dec_d) * 3600. - dec_m * 60.)
+        fixdir = "J2000 {:02d}h{:02d}m{:02.0f}s {:03d}d{:02d}m{:02.0f}s".format(ra_h, ra_m, ra_s, dec_d, dec_m, dec_s)
+    else:
+        fixdir = None
 
     msin = args.msin
 
@@ -120,7 +125,7 @@ if __name__ == "__main__":
         refants = [antid2stn[ra] for ra in args.refant.split(',') if ra in antid2stn]
 
     # rephase to source
-    if args.source is not None:
+    if fixdir is not None:
         echo("...fix vis to {}".format(fixdir), type=1)
         fixvis(msin, msin, phasecenter=fixdir)
 

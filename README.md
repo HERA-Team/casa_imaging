@@ -1,6 +1,10 @@
 # casa_imaging
 
-Scripts for imaging and calibration in CASA 5.1.0. Note that CASA version 5.3 is known to have a bug in its `ia.modify` task, and will silently error if using the `complist_gleam.py` script.
+Scripts for calibration, imaging and source modeling in CASA 5.1.0.
+A full calibration and imaging pipeline is provided in `pipelines/skycal_pipe.py`.
+See `pipelines/skycal_params.yml` for parameter selections.
+
+Note that CASA version 5.3 is known to have a bug in its `ia.modify` task, and will silently error in the `complist_gleam.py` script.
 
 ## Dependencies
 

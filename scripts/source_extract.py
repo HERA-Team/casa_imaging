@@ -31,7 +31,9 @@ except:
 a = argparse.ArgumentParser(description="Extract a source spectrum from a series of MFS images.")
 
 a.add_argument("files", type=str, nargs='*', help="filename(s) or glob-parseable string of FITS filename(s)")
-a.add_argument("--source", default=None, type=str, help="source name, with a <source>.loc file in working directory")
+a.add_argument("--source", required=True, type=str, help="source name in the field")
+a.add_argument("--source_ra", required=True, type=float, help="RA of source in J2000 degrees.")
+a.add_argument("--source_dec", required=True, type=float, help="Dec of source in J2000 degrees.")
 a.add_argument("--source_ext", default='', type=str, help="Extension after source name for output files.")
 a.add_argument("--pols", default=1, type=int, nargs='*', help="Stokes polarization integer to extract. Default: 1")
 a.add_argument("--radius", type=float, default=1, help="radius in degrees around estimated source position to get source peak")
@@ -42,7 +44,7 @@ a.add_argument("--overwrite", default=False, action='store_true', help='overwite
 a.add_argument("--gaussfit_mult", default=1.0, type=float, help="gaussian fit mask area is gaussfit_mult * synthesized_beam")
 a.add_argument("--plot_fit", default=False, action='store_true', help="Make postage stamp images of the Gaussian fit performance.")
 
-def source_extract(imfile, source=None, source_ext='', radius=1, gaussfit_mult=1.0,
+def source_extract(imfile, source, source_ra, source_dec, source_ext='', radius=1, gaussfit_mult=1.0,
                    rms_max_r=None, rms_min_r=None, pols=1, plot_fit=False):
 
     # open fits file
@@ -73,16 +75,10 @@ def source_extract(imfile, source=None, source_ext='', radius=1, gaussfit_mult=1
     dec_axis = np.linspace(head["CRVAL2"]-head["CDELT2"]*head["NAXIS2"]/2, head["CRVAL2"]+head["CDELT2"]*head["NAXIS2"]/2, head["NAXIS2"])
     RA, DEC = np.meshgrid(ra_axis, dec_axis)
 
-    # get source coordinates
-    if source is None:
-        raise ValueError("Must specify a source with a <source>.loc file in working dir.")
-    ra, dec = np.loadtxt('{}.loc'.format(source), dtype=str)
-    ra, dec = map(float, ra.split(':')), map(float,dec.split(':'))
-    ra = (ra[0] + ra[1]/60. + ra[2]/3600.) * 15
-    dec = (dec[0] + np.sign(dec[0])*dec[1]/60. + np.sign(dec[0])*dec[2]/3600.)
+
 
     # get radius coordinates
-    R = np.sqrt((RA - ra)**2 + (DEC - dec)**2)
+    R = np.sqrt((RA - source_ra)**2 + (DEC - source_dec)**2)
 
     # select pixels
     select = R < radius
@@ -202,8 +198,8 @@ def source_extract(imfile, source=None, source_ext='', radius=1, gaussfit_mult=1
         # plot
         if plot_fit:
             # get postage cutout
-            ra_select = np.where(np.abs(ra_axis-ra)<radius)[0]
-            dec_select = np.where(np.abs(dec_axis-dec)<radius)[0]
+            ra_select = np.where(np.abs(ra_axis-source_ra)<radius)[0]
+            dec_select = np.where(np.abs(dec_axis-source_dec)<radius)[0]
             d = data[ra_select[0]:ra_select[-1]+1, dec_select[0]:dec_select[-1]+1]
             m = model_gauss[ra_select[0]:ra_select[-1]+1, dec_select[0]:dec_select[-1]+1]
 
@@ -287,6 +283,12 @@ if __name__ == "__main__":
     del kwargs['source_ext']
     del kwargs['overwrite']
     del kwargs['outdir']
+    source = kwargs['source']
+    del kwargs['source']
+    source_ra = kwargs['source_ra']
+    del kwargs['source_ra']
+    source_dec = kwargs['source_dec']
+    del kwargs['source_dec']
 
     # iterate over files
     peak_flux = []
@@ -296,7 +298,7 @@ if __name__ == "__main__":
     freqs = []
     for i, fname in enumerate(files):
         try:
-            output = source_extract(fname, **kwargs)
+            output = source_extract(fname, source, source_ra, source_dec, **kwargs)
         except:
             print(sys.exc_info())
             continue

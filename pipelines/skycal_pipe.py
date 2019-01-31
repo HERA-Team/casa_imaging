@@ -5,6 +5,8 @@ skycal_pipe.py
 This script is used as an automatic calibration
 and imaging pipeline in CASA for HERA data.
 
+Run as skycal_pipe.py -c skycal_params.yml <options>
+
 See skycal_params.yml for relevant parameter selections.
 
 Nicholas Kern
@@ -14,6 +16,7 @@ November, 2018
 import numpy as np
 from pyuvdata import UVData
 import pyuvdata.utils as uvutils
+import casa_imaging
 from casa_imaging import casa_utils as utils
 import os
 import sys
@@ -28,18 +31,42 @@ from astropy.time import Time
 import copy
 import operator
 import subprocess
+import argparse
+
+# get casa_imaging path
+casa_scripts = casa_imaging.__path__[0]
+casa_scripts = os.path.join('/'.join(casa_scripts.split('/')[:-1]), 'scripts')
+
+#-------------------------------------------------------------------------------
+# Define Optional Command-Line Parameters
+#-------------------------------------------------------------------------------
+args = argparse.ArgumentParser(description="skycal_pipe.py: run as python skycal_pipe.py -c skycal_params.yml <opts>")
+args.add_argument("-c", "--param_file", type=str, help='Path to a YAML parameter file. See skycal_params.yml for details.')
+# Optional Parameters that, if defined, overwrite their counterpart in param_file.yml
+args.add_argument("--data_root", default=None, type=str, help="Root path to data files: overwrites skycal_params.yml")
+args.add_argument("--data_file", default=None, type=str, help="Data file basename: overwrites skycal_params.yml")
+args.add_argument("--source", default=None, type=str, help="Source name: overwrites skycal_params.yml")
+args.add_argument("--source_ra", default=None, type=float, help="Source right ascension in J2000 degrees: overwrites skycal_params.yml ")
+args.add_argument("--source_dec", default=None, type=float, help="Source declination in J2000 degrees: overwrites skycal_params.yml")
+a = args.parse_args()
 
 #-------------------------------------------------------------------------------
 # Parse YAML Configuration File
 #-------------------------------------------------------------------------------
 # Get config and load dictionary
-config = sys.argv[1]
-cf = utils.load_config(config)
+cf = utils.load_config(a.param_file)
 
 # Consolidate IO, data and analysis parameter dictionaries
-params = odict(cf['io'].items() + cf['data'].items() + cf['analysis'].items())
-assert len(params) == len(cf['io']) + len(cf['data']) + len(cf['analysis']), ""\
-       "Repeated parameters found within the scope of io, data and analysis dicts"
+params = odict(cf['io'].items() + cf['obs'].items() + cf['data'].items() + cf['analysis'].items())
+assert len(params) == len(cf['io']) + len(cf['obs']) + len(cf['data']) + len(cf['analysis']), ""\
+       "Repeated parameters found within the scope of io, obs, data and analysis dicts"
+
+# if optional argparser arguments passed, use their values
+for v in ['data_root', 'data_file', 'source', 'source_ra', 'source_dec']:
+    if getattr(a, v) is not None:
+        params[v] = getattr(a, v)
+if cf['io']['casa_scripts'] is None:
+    cf['io']['casa_scripts'] = casa_scripts
 
 # Get algorithm dictionary
 algs = cf['algorithm']
@@ -49,10 +76,12 @@ datafile = os.path.join(params['data_root'], params['data_file'])
 verbose = params['verbose']
 overwrite = params['overwrite']
 casa = params['casa'].split() + params['casa_flags'].split()
-point_ra = params['point_ra']
 longitude = params['longitude']
 latitude = params['latitude']
 out_dir = params['out_dir']
+source_ra = params['source_ra']
+source_dec = params['source_dec']
+source = params['source']
 
 # Change to working dir
 os.chdir(params['work_dir'])
@@ -71,8 +100,9 @@ sys.stdout = lf
 sys.stderr = ef
 
 # Setup (Small) Global Variable Dictionary
-varlist = ['datafile', 'verbose', 'overwrite', 'out_dir', 'casa', 'point_ra', 'longitude',
-           'latitude', 'lf', 'gaintables']
+varlist = ['datafile', 'verbose', 'overwrite', 'out_dir', 'casa', 'source_ra', 'source_dec', 'source',
+           'longitude', 'latitude', 'lf', 'gaintables']
+
 def global_vars(varlist=[]):
     d = []
     for v in varlist:
@@ -108,14 +138,17 @@ if params['prep_data']:
 
     # Check if datafile is already MS
     import source2file
-    if os.path.splitext(datafile)[1] == '.ms':
-        # get transit times
-        (lst, transit_jd, utc_range, utc_center, source_files,
-         source_utc_range) = source2file.source2file(point_ra, lon=longitude, lat=latitude,
-                                                     duration=p.duration, start_jd=p.start_jd, get_filetimes=False,
-                                                     verbose=verbose)
-        utils.log("...the file {} is already a CASA MS, skipping rest of PREP_DATA".format(datafile), f=lf, verbose=verbose)
-        timerange = utc_range
+    if os.path.splitext(datafile)[1] in ['.ms', '.MS']:
+        # get transit time of source
+        if source_ra is not None:
+            (lst, transit_jd, utc_range, utc_center, source_files,
+             source_utc_range) = source2file.source2file(source_ra, lon=longitude, lat=latitude,
+                                                         duration=p.duration, start_jd=p.start_jd, get_filetimes=False,
+                                                         verbose=verbose)
+            utils.log("...the file {} is already a CASA MS, skipping rest of PREP_DATA".format(datafile), f=lf, verbose=verbose)
+            timerange = utc_range
+        else:
+            transit_jd = None
 
     else:
         # Iterate over polarizations
@@ -133,29 +166,31 @@ if params['prep_data']:
             assert len(datafiles) > 0, "Searching for {} with pol {} but found no files...".format(datafile, pol)
 
             # get transit times
-            import source2file
-            (lst, transit_jd, utc_range, utc_center, source_files,
-             source_utc_range) = source2file.source2file(point_ra, lon=longitude, lat=latitude,
-                                                         duration=p.duration, start_jd=p.start_jd, get_filetimes=p.get_filetimes,
-                                                         verbose=verbose, jd_files=copy.copy(datafiles))
-            timerange = utc_range
+            if source_ra is not None:
+                (lst, transit_jd, utc_range, utc_center, source_files,
+                 source_utc_range) = source2file.source2file(source_ra, lon=longitude, lat=latitude,
+                                                             duration=p.duration, start_jd=p.start_jd, get_filetimes=p.get_filetimes,
+                                                             verbose=verbose, jd_files=copy.copy(datafiles))
+                timerange = utc_range
 
-            # ensure source_utc_range and utc_range are similar
-            if source_utc_range is not None:
-                utc_range_start = utc_range.split('~')[0].strip('"').split('/')
-                utc_range_start = map(int, utc_range_start[:-1] + utc_range_start[-1].split(':'))
-                utc_range_start = Time(datetime(*utc_range_start), format='datetime').jd
-                source_utc_range_start = source_utc_range.split('~')[0].strip('"').split('/')
-                source_utc_range_start = map(int, source_utc_range_start[:-1] + source_utc_range_start[-1].split(':'))
-                source_utc_range_start = Time(datetime(*source_utc_range_start), format='datetime').jd
-                # if difference is larger than 1 minute,
-                # then probably the correct files were not found
-                if np.abs(utc_range_start - source_utc_range_start) * 24 * 60 > 1:
-                    utils.log("Warning: Difference between theoretical transit time and transit time " \
-                        "deduced from files found is larger than 1-minute: probably the correct " \
-                        "files were not found because the correct files did not exist under the " \
-                        "data template {}".format(datafile), f=lf, verbose=verbose)
-                timerange = source_utc_range
+                # ensure source_utc_range and utc_range are similar
+                if source_utc_range is not None:
+                    utc_range_start = utc_range.split('~')[0].strip('"').split('/')
+                    utc_range_start = map(int, utc_range_start[:-1] + utc_range_start[-1].split(':'))
+                    utc_range_start = Time(datetime(*utc_range_start), format='datetime').jd
+                    source_utc_range_start = source_utc_range.split('~')[0].strip('"').split('/')
+                    source_utc_range_start = map(int, source_utc_range_start[:-1] + source_utc_range_start[-1].split(':'))
+                    source_utc_range_start = Time(datetime(*source_utc_range_start), format='datetime').jd
+                    # if difference is larger than 1 minute,
+                    # then probably the correct files were not found
+                    if np.abs(utc_range_start - source_utc_range_start) * 24 * 60 > 1:
+                        utils.log("Warning: Difference between theoretical transit time and transit time " \
+                            "deduced from files found is larger than 1-minute: probably the correct " \
+                            "files were not found because the correct files did not exist under the " \
+                            "data template {}".format(datafile), f=lf, verbose=verbose)
+                    timerange = source_utc_range
+            else:
+                source_files = datafiles
 
             # load data into UVData
             utils.log("...loading data", f=lf, verbose=verbose)
@@ -181,7 +216,9 @@ if params['prep_data']:
 
             # isolate only relevant times
             times = np.unique(uvd.time_array)
-            times = times[np.abs(times-transit_jd) < (p.duration / (24. * 60. * 2))]
+            if source_ra is not None:
+                transit_jd = np.mean(times)
+            times = times[np.abs(times - transit_jd) < (p.duration / (24. * 60. * 2))]
             assert len(times) > 0, "No times found in source_files {} given transit JD {} and duration {}".format(source_files, transit_jd, p.duration)
             uvd.select(times=times)
 
@@ -287,8 +324,8 @@ def gen_model(**kwargs):
     utils.log("\n{}\n...Generating a Flux Model", f=p.lf, verbose=p.verbose)
 
     # compile complist_gleam.py command
-    cmd = casa + ["-c", "complist_gleam.py"]
-    cmd += ['--point_ra', p.point_ra, '--point_dec', p.latitude, '--outdir', p.out_dir, 
+    cmd = casa + ["-c", "{}/complist_gleam.py".format(casa_scripts)]
+    cmd += ['--point_ra', p.source_ra, '--point_dec', p.latitude, '--outdir', p.out_dir, 
             '--gleamfile', p.gleamfile, '--radius', p.radius, '--min_flux', p.min_flux,
             '--freqs', p.freqs, '--cell', p.cell, '--imsize', p.imsize]
     if p.image:
@@ -352,23 +389,23 @@ if params['gen_model']:
     utils.log("...finished GEN_MODEL: {:d} sec elapsed".format(utils.get_elapsed_time(time, time2)), f=lf, verbose=verbose)
 
 #-------------------------------------------------------------------------------
-# Direction Independent Calibration
+# Calibration and Imaging Functions
 #-------------------------------------------------------------------------------
-
 # Define a calibration Function
-def calibrate(**kwargs):
+def calibrate(**cal_kwargs):
+    kwargs = dict(cal_kwargs.items() + global_vars(varlist).items())
     p = Dict2Obj(**kwargs)
-    # If source.loc file doesn't exist, write it
-    if not os.path.exists("{}.loc".format(p.source)):
-        direction = utils.get_direction(p.source_ra, p.source_dec)
-        with open('{}.loc'.format(p.source), 'w') as f:
-            f.write(direction)
 
     # compile command
-    cmd = p.casa + ["-c", "sky_cal.py"]
-    cmd += ["--msin", p.datafile, "--source", p.source, "--out_dir", p.out_dir, "--model", p.model,
+    cmd = p.casa + ["-c", "{}/sky_cal.py".format(casa_scripts)]
+    cmd += ["--msin", p.datafile, "--out_dir", p.out_dir, "--model", p.model,
             "--refant", p.refant, "--gain_spw", p.gain_spw, "--uvrange", p.uvrange, "--timerange",
             p.timerange, "--ex_ants", p.ex_ants, "--gain_ext", p.gain_ext, '--bp_spw', p.bp_spw]
+    if p.source_ra is not None:
+        cmd += ["--source_ra", p.source_ra]
+    if p.source_dec is not None:
+        cmd += ["--source_dec", p.source_dec]
+
     if isinstance(p.gaintables, list):
         gtables = p.gaintables
     else:
@@ -378,6 +415,7 @@ def calibrate(**kwargs):
             gtables = [p.gaintables]
     if len(gtables) > 0:
         cmd += ['--gaintables'] + gtables
+
     if p.rflag:
         cmd += ["--rflag"]
     if p.KGcal:
@@ -465,7 +503,7 @@ def calibrate(**kwargs):
                 # convert to cal
                 bfile = gts[matchB.index(True)]
                 btot_file = os.path.join(out_dir, "{}{}.Btotal.cal".format(os.path.basename(p.datafile), gext))
-                cmd = p.casa + ["-c", "calfits_to_Bcal.py", "--cfits", os.path.join(p.out_dir, calfits_fname), "--inp_cfile", bfile,"--out_cfile", btot_file]
+                cmd = p.casa + ["-c", "{}/calfits_to_Bcal.py".format(casa_scripts), "--cfits", os.path.join(p.out_dir, calfits_fname), "--inp_cfile", bfile,"--out_cfile", btot_file]
                 if overwrite:
                     cmd += ["--overwrite"]
                 ecode = subprocess.check_call(cmd)
@@ -480,14 +518,20 @@ def calibrate(**kwargs):
 # Define imaging functions
 def img_cmd(**kwargs):
     p = Dict2Obj(**kwargs)
-    cmd = p.casa + ["-c", "sky_image.py"]
-    cmd += ["--source", p.source, "--out_dir", p.out_dir,
+    cmd = p.casa + ["-c", "{}/sky_image.py".format(casa_scripts)]
+    cmd += ["--out_dir", p.out_dir,
             "--pxsize", p.pxsize, "--imsize", p.imsize,
             "--uvrange", p.uvrange, "--timerange", p.timerange,
             "--stokes", p.stokes, "--weighting", p.weighting, "--robust", p.robust,
             "--pblimit", p.pblimit, "--deconvolver", p.deconvolver, "--niter",
             p.niter, '--cycleniter', p.cycleniter, '--threshold', p.threshold,
             '--mask', p.mask, '--gridder', p.gridder, '--wprojplanes', p.wpplanes]
+    if p.source is not None:
+        cmd += ["--source", p.source]
+    if p.source_ra is not None:
+        cmd += ["--source_ra", p.source_ra]
+    if p.source_dec is not None:
+        cmd += ["--source_dec", p.source_dec]
     cmd = [map(str, _cmd) if type(_cmd) == list else str(_cmd) for _cmd in cmd]
     cmd = reduce(operator.add, [i if type(i) == list else [i] for i in cmd])
     return cmd, p
@@ -497,17 +541,21 @@ def mfs_image(**kwargs):
 
     # Perform MFS imaging
     utils.log("...starting MFS image of {} data".format(p.mfstype), f=p.lf, verbose=p.verbose)
-    icmd = cmd + ['--image_mfs', '--msin', p.datafile, '--spw', p.spw,
-                  "--source_ext", "{}_{}".format(p.source_ext, p.mfstype)]
+    icmd = cmd + ['--image_mfs', '--msin', p.datafile, '--spw', p.spw]
     if p.mfstype == 'resid':
         icmd += ['--uvsub']
+    if p.source_ext == '':
+        source_ext = ''
+    else:
+        source_ext = '{}_'.format(p.source_ext)
+    icmd += ['--source_ext', "{}{}".format(source_ext, p.mfstype)]
 
     ecode = subprocess.check_call(icmd)
 
     if p.mfstype == 'resid':
         # Apply gaintables to make CORRECTED column as it was
         utils.log("...reapplying gaintables to CORRECTED data", f=p.lf, verbose=p.verbose)
-        cmd2 = p.casa + ["-c", "sky_cal.py", "--msin", p.datafile, "--gaintables"] + p.gaintables
+        cmd2 = p.casa + ["-c", "{}/sky_cal.py".format(casa_scripts), "--msin", p.datafile, "--gaintables"] + p.gaintables
         ecode = subprocess.check_call(cmd2)
 
 def spec_image(**kwargs):
@@ -515,21 +563,28 @@ def spec_image(**kwargs):
 
     # Perform Spectral Cube imaging
     utils.log("...starting {} spectral cube imaging".format(p.datafile), f=p.lf, verbose=p.verbose)
-    icmd = cmd + ['--spec_cube', '--msin', p.datafile, "--source_ext", "{}_spec".format(p.source_ext),
+    icmd = cmd + ['--spec_cube', '--msin', p.datafile,
                   '--spec_start', str(p.spec_start), '--spec_end', str(p.spec_end),
                   '--spec_dchan', str(p.spec_dchan)] 
+    if p.source_ext == '':
+        source_ext = ''
+    else:
+        source_ext = '{}_'.format(p.source_ext)
+    icmd += ['--source_ext', "{}spec".format(source_ext)]
+
     ecode = subprocess.check_call(icmd)
 
     # Collate output images and run a source extraction
-    img_cube_template = "{}.{}{}_spec.chan????.image.fits".format(p.datafile, p.source, p.source_ext)
+    img_cube_template = "{}.{}spec.chan????.image.fits".format(p.datafile, source_ext)
     img_cube = sorted(glob.glob(img_cube_template))
     if p.source_extract:
         utils.log("...extracting {} from {} cube".format(p.source, img_cube_template), f=p.lf, verbose=p.verbose)
         if len(img_cube) == 0:
             utils.log("...no image cube files found, cannot extract spectrum", f=p.lf, verbose=p.verbose)
         else:
-            cmd = ["source_extract.py", "--source", p.source, "--radius", p.radius, '--pols'] \
-                  + p.pols + ["--outdir", p.out_dir, "--gaussfit_mult", p.gauss_mult, "--source_ext", p.source_ext]
+            cmd = ["source_extract.py", "--source", p.source, "--source_ra", p.source_ra, "--source_dec", p.source_dec,
+                   "--radius", p.radius, '--pols'] + p.pols \
+                   + ["--outdir", p.out_dir, "--gaussfit_mult", p.gauss_mult, "--source_ext", p.source_ext]
             if p.overwrite:
                 cmd += ["--overwrite"]
             if p.plot_fit:
@@ -538,24 +593,8 @@ def spec_image(**kwargs):
             cmd = map(str, cmd)
             ecode = subprocess.check_call(cmd)
 
-# Start Calibration
-if params['di_cal']:
-    # start block
-    time = datetime.utcnow()
-    utils.log("\n{}\n...Starting DI_CAL: {}\n".format("-"*60, time), f=lf, verbose=verbose)
-    cal_kwargs = copy.deepcopy(dict(algs['gen_cal'].items() + algs['di_cal'].items()))
-    utils.log(json.dumps(cal_kwargs, indent=1) + '\n', f=lf, verbose=verbose)
-
-    # Perform Calibration
-    kwargs = global_vars(varlist)
-    kwargs.update(cal_kwargs)
-    gaintables = calibrate(**kwargs)
-
-    # Peform Imaging
-    img_kwargs = copy.deepcopy(dict(algs['gen_cal'].items() + algs['di_img'].items()))
-    utils.log("\n...starting DI imaging\n", f=lf, verbose=verbose)
-    utils.log(json.dumps(algs['di_img'], indent=1) + '\n', f=lf, verbose=verbose)
-
+# generalized MFS + spectral imaging function
+def image(**img_kwargs):
     # Perform MFS of corrected data
     if img_kwargs['image_mfs']:
         kwargs = dict(img_kwargs.items() + global_vars(varlist).items())
@@ -594,9 +633,41 @@ if params['di_cal']:
             kwargs['datafile'] = mfile
             spec_image(**kwargs)
 
+#-------------------------------------------------------------------------------
+# Direction Independent Calibration
+#-------------------------------------------------------------------------------
+if params['di_cal']:
+    # start block
+    time = datetime.utcnow()
+    utils.log("\n{}\n...Starting DI_CAL: {}\n".format("-"*60, time), f=lf, verbose=verbose)
+    cal_kwargs = copy.deepcopy(dict(algs['gen_cal'].items() + algs['di_cal'].items()))
+    utils.log(json.dumps(cal_kwargs, indent=1) + '\n', f=lf, verbose=verbose)
+
+    # Perform Calibration
+    kwargs = global_vars(varlist)
+    kwargs.update(cal_kwargs)
+    gaintables = calibrate(**kwargs)
+
     # end block
     time2 = datetime.utcnow()
     utils.log("...finished DI_CAL: {:d} sec elapsed".format(utils.get_elapsed_time(time, time2)), f=lf, verbose=verbose)
+
+#-------------------------------------------------------------------------------
+# Imaging
+#-------------------------------------------------------------------------------
+if params['di_img']:
+    # start block
+    time = datetime.utcnow()
+    utils.log("\n{}\n...Starting DI_IMG: {}\n".format("-"*60, time), f=lf, verbose=verbose)
+    img_kwargs = copy.deepcopy(dict(algs['imaging'].items() + algs['di_img'].items()))
+    utils.log(json.dumps(img_kwargs, indent=1) + '\n', f=lf, verbose=verbose)
+
+    # Peform Imaging
+    image(**img_kwargs)
+
+    # end block
+    time2 = datetime.utcnow()
+    utils.log("...finished DI_IMG: {:d} sec elapsed".format(utils.get_elapsed_time(time, time2)), f=lf, verbose=verbose)
 
 #-------------------------------------------------------------------------------
 # Direction Dependent Calibration
@@ -693,53 +764,27 @@ if params['dd_cal']:
 
     # apply gaintables to datafile
     utils.log("...applying all gaintables \n\t{}\nto {}".format('\n\t'.join(gaintables), datafile), f=lf, verbose=verbose)
-    cmd = casa + ['-c', 'sky_cal.py', '--msin', datafile, '--gaintables'] + gaintables
+    cmd = casa + ['-c', '{}/sky_cal.py'.format(casa_scripts), '--msin', datafile, '--gaintables'] + gaintables
     ecode = subprocess.check_call(cmd)
-
-    # Peform Imaging
-    img_kwargs = copy.deepcopy(dict(algs['gen_cal'].items() + algs['dd_img'].items()))
-    utils.log("\n...starting DD imaging\n", f=lf, verbose=verbose)
-    utils.log(json.dumps(algs['dd_img'], indent=1) + '\n', f=lf, verbose=verbose)
-
-    # Perform MFS of corrected data
-    if img_kwargs['image_mfs']:
-        kwargs = dict(img_kwargs.items() + global_vars(varlist).items())
-        kwargs['mfstype'] = 'corr'
-        mfs_image(**kwargs)
-
-    # Perform MFS of model data
-    if img_kwargs['image_mdl']:
-        kwargs = dict(img_kwargs.items() + global_vars(varlist).items())
-        mfile = "{}.model".format(datafile)
-        if not os.path.exists(mfile):
-            utils.log("Didn't split model from datafile, which is required to image the model", f=lf, verbose=verbose)
-        else:
-            kwargs['datafile'] = mfile
-            kwargs['mfstype'] = 'model'
-            mfs_image(**kwargs)
-
-    # Perform MFS of residual data
-    if img_kwargs['image_res']:
-        kwargs = dict(img_kwargs.items() + global_vars(varlist).items())
-        kwargs['mfstype'] = 'resid'
-        mfs_image(**kwargs)
-
-    # Get spectral cube of corrected data
-    if img_kwargs['image_spec']:
-        kwargs = dict(img_kwargs.items() + global_vars(varlist).items())
-        spec_image(**kwargs)
-
-    # Get spectral cube of model data
-    if img_kwargs['image_mdl_spec']:
-        kwargs = dict(img_kwargs.items() + global_vars(varlist).items())
-        mfile = "{}.model".format(datafile)
-        if not os.path.exists(mfile):
-            utils.log("Didn't split model from datafile, which is required to image the model", f=lf, verbose=verbose)
-        else:
-            kwargs['datafile'] = mfile
-            spec_image(**kwargs)
 
     # end block
     time2 = datetime.utcnow()
     utils.log("...finished DD_CAL: {:d} sec elapsed".format(utils.get_elapsed_time(time, time2)), f=lf, verbose=verbose)
+
+#-------------------------------------------------------------------------------
+# Imaging
+#-------------------------------------------------------------------------------
+if params['dd_img']:
+    # start block
+    time = datetime.utcnow()
+    utils.log("\n{}\n...Starting DD_IMG: {}\n".format("-"*60, time), f=lf, verbose=verbose)
+    img_kwargs = copy.deepcopy(dict(algs['imaging'].items() + algs['dd_img'].items()))
+    utils.log(json.dumps(img_kwargs, indent=1) + '\n', f=lf, verbose=verbose)
+
+    # Peform Imaging
+    image(**img_kwargs)
+
+    # end block
+    time2 = datetime.utcnow()
+    utils.log("...finished DD_IMG: {:d} sec elapsed".format(utils.get_elapsed_time(time, time2)), f=lf, verbose=verbose)
 

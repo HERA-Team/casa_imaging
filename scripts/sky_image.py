@@ -30,11 +30,13 @@ a.add_argument('--script', '-c', type=str, help='name of this script', required=
 a.add_argument('--msin', default=None, type=str, help='path to a CASA measurement set. if fed a .uvfits, will convert to ms', required=True)
 # IO Arguments
 a.add_argument("--cleanspace", default=True, type=bool, help="Clean directory of image stem namespace before proceeding.")
-a.add_argument('--source', default=None, type=str, help='Name of the main source in the field.')
+a.add_argument('--source', default='', type=str, help='Name of the main source in the field.')
+a.add_argument("--source_ra", default=None, type=float, help="RA of source in J2000 degrees.")
+a.add_argument("--source_dec", default=None, type=float, help="Dec of source in J2000 degrees.")
 a.add_argument('--out_dir', default=None, type=str, help='output directory')
 a.add_argument("--silence", default=False, action='store_true', help="turn off output to stdout")
 a.add_argument('--source_ext', default=None, type=str, help="Extension to default source name in output image files")
-a.add_argument("--im_stem", default=None, type=str, help="Imagename stem for output images. Default is basename of input MS.")
+a.add_argument("--im_stem", default=None, type=str, help="Image name stem for output images. Default is basename of input MS.")
 a.add_argument("--logfile", default="output.log", type=str, help="Logging file.")
 # Imaging Arguments
 a.add_argument("--model", default=None, type=str, help="Path to model image or component list with *.cl suffix to insert into MODEL column.")
@@ -64,7 +66,7 @@ a.add_argument("--threshold", default=['0.0mJy'], type=str, nargs='*', help="Glo
 a.add_argument("--minpsffraction", default=0.1, type=float, help="PSF fraction that marks max depth for cleaning per minor cycle. A higher value triggers a major cycle sooner.")
 a.add_argument("--deconvolver", default="clark", type=str, help="Algorithm for deconvolution.")
 a.add_argument("--pblimit", default=-1, type=float, help="Ratio of peak primary beam response, outside of which image is masked. Default is no masking.")
-a.add_argument("--multiprocess", default=False, action='store_true', help="Try to multiprocess certain parts of the pipeline. Currently mp enabled portions are: spectral cube imaging.")
+a.add_argument("--multiprocess", default=False, action='store_true', help="Try to multiprocess certain parts of the pipeline.")
 a.add_argument("--Nproc", default=4, type=int, help="Number of processing to spawn in pooling.")
 a.add_argument("--savemodel", default=False, action='store_true', help="When CLEANing, store FT of model components in MODEL column of MS.")
 a.add_argument("--uvsub", default=False, action='store_true', help="Before imaging, subtract MODEL column from CORRECTED_DATA column if it exists (or DATA column otherwise).")
@@ -155,6 +157,7 @@ if __name__ == "__main__":
 
     # setup multiprocessing if requested
     if args.multiprocess:
+        raise NotImplementedError("multiprocessing not currently implemented.")
         pool = Pool(args.Nproc)
         M = pool.map
     else:
@@ -170,12 +173,16 @@ if __name__ == "__main__":
             ft(msin, model=args.model, usescratch=True)
 
     # get phase center
-    if args.source is not None:
-        ra, dec = np.loadtxt('{}.loc'.format(args.source), dtype=str)
-        ra, dec = ra.split(':'), dec.split(':')
-        fixdir = 'J2000 {}h{}m{}s {}d{}m{}s'.format(*(ra+dec))
+    if args.source_ra is not None and args.source_dec is not None:
+        _ra = args.source_ra / 15.0
+        ra_h = int(np.floor(_ra))
+        ra_m = int(np.floor((_ra - ra_h) * 60.))
+        ra_s = int(np.around(((_ra - ra_h) * 60. - ra_m) * 60.))
+        dec_d = int(np.floor(np.abs(args.source_dec)) * args.source_dec / np.abs(args.source_dec))
+        dec_m = int(np.floor(np.abs(args.source_dec - dec_d) * 60.))
+        dec_s = int(np.abs(args.source_dec - dec_d) * 3600. - dec_m * 60.)
+        fixdir = "J2000 {:02d}h{:02d}m{:02.0f}s {:03d}d{:02d}m{:02.0f}s".format(ra_h, ra_m, ra_s, dec_d, dec_m, dec_s)
     else:
-        args.source = ''
         fixdir = None
 
     # get paths
@@ -237,9 +244,12 @@ if __name__ == "__main__":
 
     # get image stem
     if args.im_stem is None:
-        im_stem = os.path.join(out_dir, '.'.join([base_ms, args.source + args.source_ext]))
+        im_stem = os.path.join(out_dir, base_ms)
     else:
-        im_stem = args.im_stem
+        im_stem = os.path.join(out_dir, args.im_stem)
+    sourcename = args.source + args.source_ext
+    if sourcename != '':
+        im_stem += '.{}'.format(sourcename)
   
     if args.cleanspace:
         # remove paths
