@@ -32,7 +32,8 @@ a = argparse.ArgumentParser(description="Turn CASA calibration solutions in {}.n
 
 # Required Parameters
 a.add_argument("--fname", type=str, help="output calfits filename.", required=True)
-a.add_argument("--uv_file", type=str, help="Path to original miriad uv file of data.", required=True)
+a.add_argument("--uv_file", type=str, help="Path to original miriad or uvh5 data file.", required=True)
+a.add_argument("--uv_pols", type=str, nargs='*', help="Polarizations to pull from uv file.")
 # Delay Solution Parameters
 a.add_argument("--dly_files", type=str, default=None, nargs='*', help="Path to .npz file(s) with antenna delay output from sky_image.py (CASA K cal)")
 a.add_argument("--TTonly", default=False, action="store_true", help="only store Tip-Tilt slopes of delay solution.")
@@ -81,7 +82,7 @@ def skynpz2calfits(fname, uv_file, dly_files=None, amp_files=None, bp_files=None
                    noBPamp=False, bp_TTonly=False, bp_medfilt=False, medfilt_kernel=5, bp_amp_antavg=False, bp_flag_frac=0.3,
                    bp_broad_flags=False, medfilt_flag=False, bp_gp_smooth=False, bp_gp_max_dly=500.0, bp_gp_nrestart=1, bp_gp_thin=1,
                    plot_amp=False, gain_amp_antavg=False, verbose=True, bp_gp_optimizer=None, medfilt_flag_cut=10,
-                   taper_flagged_edges=False):
+                   taper_flagged_edges=False, uv_pols=None):
     """
     Convert *.npz output from sky_image.py into single or multi-pol calfits file.
     Currently only supports data and gain solutions with a single spectral window.
@@ -93,7 +94,7 @@ def skynpz2calfits(fname, uv_file, dly_files=None, amp_files=None, bp_files=None
     # load UVData
     echo("...loading uv_file", verbose=verbose)
     uvd = UVData()
-    uvd.read_miriad(uv_file)
+    uvd.read(uv_file, polarizations=uv_pols)
 
     # get ants and antpos
     antpos, ants = uvd.get_ENU_antpos(center=True, pick_data_ants=True)
