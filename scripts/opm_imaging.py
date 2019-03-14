@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-rtp_imaging.py
+opm_imaging.py
 
 Use CASA to make a multi-frequency synthesis image of a measurement set.
 """
