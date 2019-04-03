@@ -118,10 +118,10 @@ def source2file(ra, lon=21.428305555, lat=-30.72152, duration=2.0, offset=0.0, s
             uvd = UVData()
             for i, sf in enumerate(source_files):
                 if i == 0:
-                    uvd.read_miriad(sf)
+                    uvd.read(sf)
                 else:
                     uv = UVData()
-                    uv.read_miriad(sf)
+                    uv.read(sf)
                     uvd += uv
             file_jds = np.unique(uvd.time_array)
             file_delta_jd = np.median(np.diff(file_jds))
