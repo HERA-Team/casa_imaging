@@ -45,6 +45,11 @@ def main():
           imsize=[512, 512], cell=["500 arcsec"], mode="mfs", nterms=1,
           spw="0:150~900", stokes="IQUV")
 
+    vispolimname = visroot + ".vispol"
+    clean(vis=msname, imagename=vispolimname, niter=0, weighting="briggs", robust=0,
+          imsize=[512, 512], cell=["500 arcsec"], mode="mfs", nterms=1,
+          spw="0:150~900", stokes="XXYY")
+
     return
 
 
