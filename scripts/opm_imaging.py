@@ -39,16 +39,32 @@ def main():
     print("converting uvfits to ms...")
     importuvfits(visname, msname)
 
-    # call imaging command
-    print("running CLEAN task...")
+    # call imaging commands
+    print("running CLEAN tasks...")
     clean(vis=msname, imagename=image, niter=0, weighting="briggs", robust=0,
           imsize=[512, 512], cell=["500 arcsec"], mode="mfs", nterms=1,
           spw="0:150~900", stokes="IQUV")
 
-    vispolimname = visroot + ".vispol"
+    vispolimname = imageroot + ".vispol"
     clean(vis=msname, imagename=vispolimname, niter=0, weighting="briggs", robust=0,
           imsize=[512, 512], cell=["500 arcsec"], mode="mfs", nterms=1,
           spw="0:150~900", stokes="XXYY")
+
+    # export images to FITS
+    stokes_imname = image + ".image"
+    vispol_imname = vispolimname + ".image"
+    stokes_fits = stokes_imname + ".fits"
+    vispol_fits = vispol_imname + ".fits"
+    print("exporting to FITS...")
+    exportfits(imagename=stokes_imname, fitsimage=stokes_fits)
+    exportfits(imagename=vispol_imname, fitsimage=vispol_fits)
+
+    stokes_psf = image + ".psf"
+    vispol_psf = vispolimname + ".psf"
+    stokes_fits = stokes_psf + ".fits"
+    vispol_fits = vispol_psf + ".fits"
+    exportfits(imagename=stokes_psf, fitsimage=stokes_fits)
+    exportfits(imagename=vispol_psf, fitsimage=vispol_fits)
 
     return
 
