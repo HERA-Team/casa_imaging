@@ -21,6 +21,8 @@ def get_hdu_info(hdu):
             Output from astropy.io.fits.open(<fname>)
 
     Returns: (pols, freqs, stokax, freqax)
+        ra : ndarray of right ascension (degrees)
+        dec : ndarray of declination (degrees)
         pols : ndarray containing polarization integers
         freqs : ndarray containing frequencies in Hz
         stokax : integer of polarization (stokes) axis in data cube
@@ -28,6 +30,19 @@ def get_hdu_info(hdu):
     """
     # get header
     head = hdu[0].header
+
+    # get RA and Dec
+    if 'ra' in head['CTYPE1'].lower():
+        rax = 0
+        dax = 1
+    elif 'ra' in had['CTYPE2'].lower():
+        dax = 0
+        rax = 1
+    else:
+        raise ValueError("Couldn't get RA and Dec axes")
+
+    ra = (np.arange(head['NAXIS{}'.format(rax+1)]) - head['CRPIX{}'.format(rax+1)]) * head['CDELT{}'.format(rax+1)] + head['CRVAL{}'.format(rax+1)]
+    dec = (np.arange(head['NAXIS{}'.format(dax+1)]) - head['CRPIX{}'.format(dax+1)]) * head['CDELT{}'.format(dax+1)] + head['CRVAL{}'.format(dax+1)]
 
     # get frequencies and polarizations
     if head["CTYPE3"] == "FREQ":
@@ -46,7 +61,7 @@ def get_hdu_info(hdu):
     # get cube frequencies
     freqs = np.arange(head["NAXIS{}".format(freqax)]) * head["CDELT{}".format(freqax)] + head["CRVAL{}".format(freqax)]
 
-    return pols, freqs, stokax, freqax
+    return ra, dec, pols, freqs, stokax, freqax
 
 
 def get_beam_info(hdu, pol_ind=0, pxunits=False):
