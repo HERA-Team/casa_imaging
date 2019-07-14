@@ -184,10 +184,6 @@ algorithm :
   di_img :
     source_ext  : ""        # str, extension to source name for image files
 
-  # Direction Dependent Imaging Parameters
-  dd_img :
-    source_ext  : "_peel"        # str, extension to source name for image files
-
   # Direction Dependent Calibration Parameters
   dd_cal :
     # Parameters for source modeling
@@ -229,4 +225,8 @@ algorithm :
     gain_ext  : ''        # str, file extension of gain tables 
     gaintables  : ''            # pre-calibration gain tables to apply first
 
+  # Direction Dependent Imaging Parameters
+  dd_img :
+    source_ext  : "_peel"        # str, extension to source name for image files
+    
 

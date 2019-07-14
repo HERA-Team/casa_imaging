@@ -103,10 +103,9 @@ ENV/
 # casa outputs
 casa_imaging/tests/*.log
 casa_imaging/data/*.log
+casa_imaging/data/*
 scripts/*.log
 casa_imaging/tests/*.last
 casa_imaging/data/*.last
-casa_imaging/data/*.lock
-casa_imaging/data/*/*.lock
-
-
+*.lock/*
+*/table.*

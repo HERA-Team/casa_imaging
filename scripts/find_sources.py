@@ -57,7 +57,7 @@ if __name__ == "__main__":
     mwcs = WCS(mhead, naxis=2)
 
     # get hdu info
-    pols, freqs, stokax, freqax = utils.get_hdu_info(mhdu)
+    ra, dec, pols, freqs, stokax, freqax = utils.get_hdu_info(mhdu)
 
     # load image file for beam info, use zeroth polarization if multi-pol available
     if a.imfile is not None:

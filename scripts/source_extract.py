@@ -19,6 +19,7 @@ import matplotlib.pyplot as plt
 from astropy.wcs import WCS
 import pyuvdata.utils as uvutils
 import copy
+from casa_imaging import casa_utils
 
 try:
     from mpl_toolkits.mplot3d import Axes3D
@@ -44,7 +45,7 @@ a.add_argument("--overwrite", default=False, action='store_true', help='overwite
 a.add_argument("--gaussfit_mult", default=1.0, type=float, help="gaussian fit mask area is gaussfit_mult * synthesized_beam")
 a.add_argument("--plot_fit", default=False, action='store_true', help="Make postage stamp images of the Gaussian fit performance.")
 
-def source_extract(imfile, source, source_ra, source_dec, source_ext='', radius=1, gaussfit_mult=1.0,
+def source_extract(imfile, source, source_ra, source_dec, source_ext='', radius=1, gaussfit_mult=1.5,
                    rms_max_r=None, rms_min_r=None, pols=1, plot_fit=False):
 
     # open fits file
@@ -53,13 +54,8 @@ def source_extract(imfile, source, source_ra, source_dec, source_ext='', radius=
     # get header
     head = hdu[0].header
 
-    # determine if freq precedes stokes in header
-    if head['CTYPE3'] == 'FREQ':
-        freq_ax = 3
-        stok_ax = 4
-    else:
-        freq_ax = 4
-        stok_ax = 3
+    # get info
+    ra_axis, dec_axis, pol_arr, freqs, stok_ax, freq_ax = casa_utils.get_hdu_info(hdu)
 
     # get axes info
     npix1 = head["NAXIS1"]
@@ -71,20 +67,13 @@ def source_extract(imfile, source, source_ra, source_dec, source_ext='', radius=
     freq = head["CRVAL{}".format(freq_ax)]
 
     # get ra dec coordiantes
-    ra_axis = np.linspace(head["CRVAL1"]-head["CDELT1"]*head["NAXIS1"]/2, head["CRVAL1"]+head["CDELT1"]*head["NAXIS1"]/2, head["NAXIS1"])
-    dec_axis = np.linspace(head["CRVAL2"]-head["CDELT2"]*head["NAXIS2"]/2, head["CRVAL2"]+head["CDELT2"]*head["NAXIS2"]/2, head["NAXIS2"])
     RA, DEC = np.meshgrid(ra_axis, dec_axis)
 
-
-
-    # get radius coordinates
+    # get radius coordinates: flat-sky approx
     R = np.sqrt((RA - source_ra)**2 + (DEC - source_dec)**2)
 
     # select pixels
     select = R < radius
-
-    # construct polarization array
-    pol_arr = np.asarray(np.arange(nstok) * head["CDELT{}".format(stok_ax)] + head["CRVAL{}".format(stok_ax)], dtype=np.int)
 
     # polarization check
     if isinstance(pols, (int, np.integer, str, np.str)):
@@ -111,44 +100,34 @@ def source_extract(imfile, source, source_ra, source_dec, source_ext='', radius=
         elif stok_ax == 4:
             data = hdu[0].data[pol_ind, 0, :, :]
 
-        # check for clean file or tclean file
-        if "BMAJ" in head:
-            # clean output
-            bmaj = head["BMAJ"]
-            bmin = head["BMIN"]
-            bpa = head["BPA"]
-        else:
-            # possibly tclean
-            try:
-                bmaj = hdu[1].data['BMAJ'][pol_ind] / 3600.
-                bmin = hdu[1].data['BMIN'][pol_ind] / 3600.
-                bpa = hdu[1].data["BPA"][pol_ind]
-            except:
-                raise ValueError("Couldn't find BMAJ or BMIN in hdu[0].header or hdu[1].data...")
+        # get beam info for this polarization
+        bmaj, bmin, bpa = casa_utils.get_beam_info(hdu, pol_ind=pol_ind)
 
         # check for tclean failed PSF
         if np.isclose(bmaj, bmin, 1e-6):
             raise ValueError("The PSF is not defined for pol {}.".format(polstr))
 
+        # relate FWHM of major and minor axes to standard deviation
+        maj_std = bmaj / 2.35
+        min_std = bmin / 2.35
+
         # calculate beam area in degrees^2
+        # https://casa.nrao.edu/docs/CasaRef/image.fitcomponents.html
         beam_area = (bmaj * bmin * np.pi / 4 / np.log(2))
 
-        # calculate pixel area in degrees ^2
-        pixel_area = np.abs(head["CDELT1"] * head["CDELT2"])
+        # calculate pixel area in degrees^2
+        pixel_area = np.abs(np.diff(ra_axis)[0] * np.diff(dec_axis)[0])
         Npix_beam = beam_area / pixel_area
-        
+
         # get peak brightness within pixel radius
         _peak = np.nanmax(data[select])
 
-        # get rms outside of pixel radius
+        # get rms outside of source radius
         if rms_max_r is not None and rms_max_r is not None:
             rms_select = (R < rms_max_r) & (R > rms_min_r)
-            _rms = np.sqrt(np.mean(data[select]**2))
+            _rms = np.sqrt(np.mean(data[rms_select]**2))
         else:
             _rms = np.sqrt(np.mean(data[~select]**2))
-
-        # get peak error
-        _peak_err = _rms / np.sqrt(Npix_beam / 2.0)
 
         ## fit a 2D gaussian and get integrated and peak flux statistics ##
         # recenter R array by peak flux point and get thata T array
@@ -162,31 +141,38 @@ def source_extract(imfile, source, source_ra, source_dec, source_ext='', radius=
         T = np.arctan(Y / X)
 
         # use synthesized beam as data mask
-        ecc = bmaj / bmin
+        ecc = maj_std / min_std
         beam_theta = bpa * np.pi / 180 + np.pi/2
         EMAJ = R * np.sqrt(np.cos(T+beam_theta)**2 + ecc**2 * np.sin(T+beam_theta)**2)
-        fit_mask = EMAJ < (bmaj / 2. * gaussfit_mult)
+        fit_mask = EMAJ < (maj_std * gaussfit_mult)
         masked_data = data.copy()
         masked_data[~fit_mask] = 0.0
 
         # fit 2d gaussian
-        gauss_init = mod.functional_models.Gaussian2D(_peak, peak_ra, peak_dec, x_stddev=bmaj/2., y_stddev=bmin/2.) 
+        gauss_init = mod.functional_models.Gaussian2D(_peak, peak_ra, peak_dec, x_stddev=maj_std, y_stddev=min_std) 
         fitter = mod.fitting.LevMarLSQFitter()
         gauss_fit = fitter(gauss_init, RA[fit_mask], DEC[fit_mask], data[fit_mask])
 
         # get gaussian fit properties
         _peak_gauss_flux = gauss_fit.amplitude.value
         P = np.array([X, Y]).T
-        beam_theta -= np.pi/2
+        beam_theta -= np.pi/2  # correct for previous + np.pi/2
         Prot = P.dot(np.array([[np.cos(beam_theta), -np.sin(beam_theta)], [np.sin(beam_theta), np.cos(beam_theta)]]))
         gauss_cov = np.array([[gauss_fit.x_stddev.value**2, 0], [0, gauss_fit.y_stddev.value**2]])
+        # try to get integrated flux
         try:
-            model_gauss = stats.multivariate_normal.pdf(Prot, mean=np.array([0,0]), cov=gauss_cov)
+            model_gauss = stats.multivariate_normal.pdf(Prot, mean=np.array([0, 0]), cov=gauss_cov)
             model_gauss *= gauss_fit.amplitude.value / model_gauss.max()
-            _int_gauss_flux = np.nansum(model_gauss.ravel()) / Npix_beam
+            nanmask = ~np.isnan(model_gauss)
+            _int_gauss_flux = np.nansum(model_gauss) / Npix_beam
         except:
             model_gauss = np.zeros_like(data)
             _int_gauss_flux = 0
+
+        # get peak error
+        # http://www.gb.nrao.edu/~bmason/pubs/m2mapspeed.pdf
+        beam = np.exp(-((X / maj_std)**2 + (Y / min_std)**2))
+        _peak_err = _rms / np.sqrt(np.sum(beam**2))
 
         # append
         peak.append(_peak)

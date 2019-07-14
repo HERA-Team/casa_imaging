@@ -73,7 +73,7 @@ if __name__ == "__main__":
     cwcs = WCS(chead, naxis=2)
 
     # get hdu info
-    cpols, cfreqs, cstokax, cfreqax = utils.get_hdu_info(chdu)
+    _, _, cpols, cfreqs, cstokax, cfreqax = utils.get_hdu_info(chdu)
     Npols = len(cpols)
 
     # load sources
@@ -88,7 +88,7 @@ if __name__ == "__main__":
     for imf in a.imfiles:
         # open hdu
         hdu = fits.open(imf)
-        p, f, pa, fa = utils.get_hdu_info(hdu)
+        _, _, p, f, pa, fa = utils.get_hdu_info(hdu)
 
         # iterate over pols and get restoring beam
         rbs = []
