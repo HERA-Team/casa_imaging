@@ -548,7 +548,11 @@ def mfs_image(**kwargs):
         source_ext = ''
     else:
         source_ext = '{}_'.format(p.source_ext)
-    icmd += ['--source_ext', "{}{}".format(source_ext, p.mfstype)]
+    if p.mfstype == '':
+        mfstype = ''
+    else:
+        mfstype = '_{}'.format(p.mfstype)
+    icmd += ['--source_ext', "{}{}".format(source_ext, mfstype)]
 
     ecode = subprocess.check_call(icmd)
 

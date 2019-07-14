@@ -35,7 +35,7 @@ def echo(message, type=0, verbose=True):
 
 
 def source2file(ra, lon=21.428305555, lat=-30.72152, duration=2.0, offset=0.0, start_jd=None,
-                    jd_files=None, get_filetimes=False, verbose=False):
+                    jd_files=None, get_filetimes=False, filetype='uvh5', verbose=False):
     """
     """
     # get LST of source
@@ -71,7 +71,6 @@ def source2file(ra, lon=21.428305555, lat=-30.72152, duration=2.0, offset=0.0, s
          ''.format(duration, utc_range, utc_center), type=1, verbose=verbose)
 
     if jd_files is not None:
-
         # get files
         files = jd_files
         if len(files) == 0:
@@ -115,15 +114,12 @@ def source2file(ra, lon=21.428305555, lat=-30.72152, duration=2.0, offset=0.0, s
 
         if get_filetimes:
             # Get UTC timerange of source in files
-            uvd = UVData()
+            file_jds = []
             for i, sf in enumerate(source_files):
-                if i == 0:
-                    uvd.read(sf)
-                else:
-                    uv = UVData()
-                    uv.read(sf)
-                    uvd += uv
-            file_jds = np.unique(uvd.time_array)
+                uv = UVData()
+                uv.read(sf, read_data=filetype=='miriad')
+                file_jds.extend(np.unique(uv.time_array))
+            file_jds = np.array(file_jds)
             file_delta_jd = np.median(np.diff(file_jds))
             file_delta_min =  file_delta_jd * (60. * 24)
             num_file_times = int(np.ceil(duration / file_delta_min))
