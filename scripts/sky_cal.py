@@ -344,7 +344,7 @@ if __name__ == "__main__":
         # split cal
         if args.split_cal:
             # split MS
-            ms_split = os.path.join(out_dir, "{}.{}".format(base_ms, args.cal_ext))
+            ms_split = os.path.join(out_dir, "{}.{}.ms".format(os.path.splitext(base_ms)[0], args.cal_ext))
             files = glob.glob("{}*".format(ms_split))
             for f in files:
                 if os.path.exists(f):
@@ -360,7 +360,7 @@ if __name__ == "__main__":
 
     if args.split_model:
         # split MS
-        ms_split = os.path.join(out_dir, "{}.{}".format(base_ms, args.model_ext))
+        ms_split = os.path.join(out_dir, "{}.{}.ms".format(os.path.splitext(base_ms)[0], args.model_ext))
         files = glob.glob("{}*".format(ms_split))
         for f in files:
             if os.path.exists(f):
