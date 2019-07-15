@@ -137,8 +137,6 @@ def image_mfs(d):
 if __name__ == "__main__":
     # parse args
     args = a.parse_args()
-    from IPython import embed
-    embed()
 
     # parse special arguments
     if args.savemodel:
