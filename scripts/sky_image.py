@@ -254,7 +254,7 @@ if __name__ == "__main__":
     if args.cleanspace:
         # remove paths
         log("...cleaning namespace {}".format(im_stem+'*'), type=1)
-        source_files = glob.glob(im_stem+'*')
+        source_files = glob.glob(im_stem+'.*')
         if len(source_files) > 0:
             for sf in source_files:
                 if os.path.exists(sf):
