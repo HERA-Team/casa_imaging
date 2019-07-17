@@ -44,6 +44,7 @@ args.add_argument("--regions", default=None, type=str, help="Path to tab-delimit
 args.add_argument("--region_radius", default=None, type=float, help="If providing a list of regions, this is the inclusion (exclusion) radius in degrees. B/c this uses flat-sky approx, only small-ish regions (few degrees at most) work well.")
 args.add_argument("--exclude", default=False, action='store_true', help="If providing regions via --regions, exclude souces within masks, " \
                     "rather than only including sources within masks per default behavior.")
+args.add_argument("--complists", type=str, nargs='*', default=None, help="Additional CASA component list strings or filepath to complist scripts.")
 
 if __name__ == "__main__":
     a = args.parse_args()
@@ -110,8 +111,6 @@ if __name__ == "__main__":
 
     # iterate over sources and add to complist
     select = select[np.argsort(dist[select])]
-    source = "{name:s}\t{flux:06.2f}\t{spix:02.2f}\t{ra:07.3f}\t{dec:07.3f}"
-    sources = []
     for s in select:
         # get source info
         flux = fluxes[s]
@@ -143,7 +142,7 @@ if __name__ == "__main__":
             x = np.asarray(x, dtype=np.float)
             y = np.log10([data[s][xs] for xs in xstr])
             if sum(~np.isnan(y)) < 2:
-                # skip this source b/c less all but 1 bins are negative or nan...
+                # skip this source b/c all but 1 bins are negative or nan...
                 continue
             spix = np.polyfit(np.log10(x)[~np.isnan(y)], y[~np.isnan(y)], deg=1)[0]
 
@@ -155,6 +154,28 @@ if __name__ == "__main__":
         cl.addcomponent(label=name, flux=flux, fluxunit="Jy", 
                         dir="J2000 {}".format(s_dir), freq=ref_freq, shape='point',
                         spectrumtype='spectral index', index=spix)
+
+    # add other components if requested
+    if a.complists is not None:
+        for complist in a.complists:
+            # first check if its a known file
+            if os.path.exists(complist):
+                with open(complist) as f:
+                    exec(f.read())
+            # otherwise interpret as a CASA Python string
+            else:
+                exec(complist)
+
+    # iterate over sources and get metadata and append to list
+    source = "{name:s}\t{flux:06.2f}\t{spix:02.2f}\t{ra:07.3f}\t{dec:07.3f}"
+    sources = []
+    for i in range(cl.length()):
+        comp = cl.getcomponent(i)
+        name = comp.get('label', None)
+        flux = comp.get('flux', None).get('value', None)[0]
+        spix = comp.get('spectrum', None).get('index', None)
+        s_ra = comp.get('shape', None).get('direction', None).get('m0', None).get('value', None) * 180 / np.pi
+        s_dec = comp.get('shape', None).get('direction', None).get('m1', None).get('value', None) * 180 / np.pi
         sources.append(source.format(name=name, flux=flux, spix=spix, ra=s_ra, dec=s_dec))
 
     # write source list to file

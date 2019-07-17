@@ -35,16 +35,22 @@ def test_model_image():
         except:
             shutil.rmtree(f)
     # Test 1: Generate component list for 2 Hour Field            
-    out = subprocess.call(["casa", "-c", "../../scripts/complist_gleam.py",
+    out = subprocess.call(["casa","--nologger", "--nologfile", "--nogui", "-c",
+                           "../../scripts/complist_gleam.py",
                            "--point_ra", "30.05", "--point_dec", "-30.72",
                            "--image", "--freqs", "148.828125,158.69140625,101",
                            "--imsize", "256", "--cell", "400arcsec",
                            "--min_flux", "0.1", "--gleamfile", "../data/small_gleam.fits",
-                           "--radius", "15", "--overwrite"])
+                           "--radius", "15", "--overwrite", "--complists",
+                           "cl.addcomponent(label='test', flux=100, fluxunit='Jy', dir='J2000 30d -30d',"
+                           " freq='150MHz', index=-1, spectrumtype='spectral index')"])
     nt.assert_equal(out, 0)
     nt.assert_true(np.all([os.path.exists("gleam.cl.srcs.tab"), os.path.exists("gleam.cl"),
                            os.path.exists("gleam.cl.image"), os.path.exists("gleam.cl.fits")]))
-    nt.assert_equal(np.loadtxt("gleam.cl.srcs.tab", dtype=np.str, delimiter='\t').shape, (5612, 5))
+    srcs = np.loadtxt("gleam.cl.srcs.tab", dtype=np.str, delimiter='\t')
+    nt.assert_equal(srcs.shape, (5612 + 1, 5))
+    nt.assert_equal(srcs[-1][0], 'test')
+    nt.assert_almost_equal(float(srcs[-1][1]), 100.0)
 
     # Test 2: primary beam correction
     out = subprocess.call(["../../scripts/pbcorr.py", "--beamfile",
@@ -73,7 +79,8 @@ def test_sky_cal():
     shutil.copytree("../data/zen.2458101.28956.HH.uvRA.ms", "./skycal.ms")
     shutil.copy("../data/gleam02.loc", "./")
     # run sky_cal
-    out = subprocess.call(["casa", "-c", "../../scripts/sky_cal.py",
+    out = subprocess.call(["casa","--nologger", "--nologfile", "--nogui", "-c",
+                           "../../scripts/sky_cal.py",
                            "--msin", "./skycal.ms", "--source", "gleam02",
                            "--model", "../data/gleam02.cl.pbcorr.image",
                            "--refant", "53", "--KGcal", "--KGsnr", "0",
