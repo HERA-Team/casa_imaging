@@ -100,7 +100,7 @@ if __name__ == "__main__":
     dist = np.sqrt(ra_dist**2 + dec_dist**2)
     select = np.where((dist <= a.radius) & (fluxes >= a.min_flux))[0]
     if len(select) == 0:
-        raise ValueError("No sources found given RA, Dec and min_flux selections.")
+        print("Warning: No sources found given RA, Dec and min_flux selections.")
     print("...a total of {} sources were found given RA, Dec and min_flux cuts".format(len(select)))
 
     # if regions provided, load them
