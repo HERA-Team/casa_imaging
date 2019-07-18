@@ -14,7 +14,7 @@ nkern@berkeley.edu
 import numpy as np
 import astropy.io.fits as fits
 from astropy import wcs
-from pyuvdata import uvbeam, utils as uvutils
+from pyuvdata import UVBeam, utils as uvutils
 import os
 import sys
 import glob
@@ -23,6 +23,7 @@ import shutil
 import copy
 import healpy
 import scipy.stats as stats
+from casa_imaging import casa_utils
 from scipy import interpolate
 from astropy.time import Time
 from astropy import coordinates as crd
