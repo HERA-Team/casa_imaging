@@ -40,9 +40,10 @@ args.add_argument("--lon", default=21.42830, type=float, help="longitude of obse
 args.add_argument("--lat", default=-30.72152, type=float, help="latitude of observer in degrees north")
 args.add_argument("--time", type=float, help='time of middle of observation in Julian Date')
 
-# HEALpix Beam args
-args.add_argument("--beamfile", type=str, help="path to primary beam healpix map in pyuvdata.UVBeam format")
+# beam args
+args.add_argument("--beamfile", type=str, help="path to primary beam in pyuvdata.UVBeam format")
 args.add_argument("--pols", type=int, nargs='*', default=None, help="Polarization integer of healpix maps to use for beam models. Default is to use polarization in fits HEADER.")
+args.add_argument("---freq_interp_kind", type=str, default='cubic', help="Interpolation method across frequency")
 
 # Gaussian Beam args
 args.add_argument("--ew_sig", type=float, default=None, nargs='*',
@@ -78,20 +79,27 @@ if __name__ == "__main__":
         # load beam
         uvb = UVBeam()
         uvb.read_beamfits(a.beamfile)
+        if uvb.pixel_coordinate_system == 'healpix':
+            uvb.interpolation_function = 'healpix_simple'
+        else:
+            uvb.interpolation_function = 'az_za_simple'
+
         # get beam models and beam parameters
         beam_maps = np.abs(uvb.data_array[0, 0, :, :, :])
         beam_freqs = uvb.freq_array.squeeze() / 1e6
         Nbeam_freqs = len(beam_freqs)
-        beam_nside = healpy.npix2nside(beam_maps.shape[2])
+
+        if a.pols is None:
+            pols = uvb.polarization_array
+        else:
+            pols = a.pols
 
         # construct beam interpolation function
-        def beam_interp_func(theta, phi):
-            # convert to radians
-            theta = copy.copy(theta) * np.pi / 180.0
-            phi = copy.copy(phi) * np.pi / 180.0
+        def beam_interp_func(theta, phi, pols):
+            '''theta, phi in radians'''
+            beam_interp = uvb.interp(phi.ravel(), theta.ravel(), polarizations=pols, freq_interp_kind=freq_interp_kind, reuse_spline=True)
+            beam_
             shape = theta.shape
-            # loop over freq, then pol
-            beam_interp = [[healpy.get_interp_val(m, theta.ravel(), phi.ravel(), lonlat=False).reshape(shape) for m in maps] for maps in beam_maps]
             return np.array(beam_interp)
 
     # construct pb
@@ -101,6 +109,7 @@ if __name__ == "__main__":
         if a.ew_sig is None or a.ns_sig is None:
             raise AttributeError("if beamfile is None, then must feed ew_sig and ns_sig")
         def beam_interp_func(theta, phi):
+            '''theta phi in radians'''
             beam_interp = []
             psi_ew = theta * np.cos(phi)
             psi_ns = theta * np.sin(phi)

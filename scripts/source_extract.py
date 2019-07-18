@@ -55,7 +55,8 @@ def source_extract(imfile, source, source_ra, source_dec, source_ext='', radius=
     head = hdu[0].header
 
     # get info
-    ra_axis, dec_axis, pol_arr, freqs, stok_ax, freq_ax = casa_utils.get_hdu_info(hdu)
+    RA, DEC, pol_arr, freqs, stok_ax, freq_ax = casa_utils.get_hdu_info(hdu)
+    dra, ddec = head['CDELT1'], head['CDELT2']
 
     # get axes info
     npix1 = head["NAXIS1"]
@@ -65,9 +66,6 @@ def source_extract(imfile, source, source_ra, source_dec, source_ext='', radius=
 
     # get frequency of image
     freq = head["CRVAL{}".format(freq_ax)]
-
-    # get ra dec coordiantes
-    RA, DEC = np.meshgrid(ra_axis, dec_axis)
 
     # get radius coordinates: flat-sky approx
     R = np.sqrt((RA - source_ra)**2 + (DEC - source_dec)**2)
@@ -116,7 +114,7 @@ def source_extract(imfile, source, source_ra, source_dec, source_ext='', radius=
         beam_area = (bmaj * bmin * np.pi / 4 / np.log(2))
 
         # calculate pixel area in degrees^2
-        pixel_area = np.abs(np.diff(ra_axis)[0] * np.diff(dec_axis)[0])
+        pixel_area = np.abs(dra * ddec)
         Npix_beam = beam_area / pixel_area
 
         # get peak brightness within pixel radius
@@ -184,6 +182,8 @@ def source_extract(imfile, source, source_ra, source_dec, source_ext='', radius=
         # plot
         if plot_fit:
             # get postage cutout
+            ra_axis = RA[npix1//2]
+            dec_axis = DEC[:, npix2//2]
             ra_select = np.where(np.abs(ra_axis-source_ra)<radius)[0]
             dec_select = np.where(np.abs(dec_axis-source_dec)<radius)[0]
             d = data[ra_select[0]:ra_select[-1]+1, dec_select[0]:dec_select[-1]+1]

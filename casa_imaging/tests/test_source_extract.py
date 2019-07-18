@@ -69,7 +69,6 @@ def test_source_extract():
     assert np.all(np.isclose(peak, 18.0, atol=1.0))
     assert np.all(np.isclose(peak_gauss_flux, 18.0, atol=1.0))
     assert np.all(np.isclose(int_gauss_flux, 18.0, atol=1.0))
-    assert np.all(np.isclose(peak_err, 0.01, atol=1e-2))
 
     if os.path.exists(fname):
         os.remove(fname)

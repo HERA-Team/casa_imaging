@@ -2,6 +2,7 @@
 Utility functions for operating on CASA-exported FITS files.
 """
 import astropy.io.fits as fits
+from astropy.wcs import WCS
 import numpy as np
 import os
 import shutil
@@ -30,19 +31,17 @@ def get_hdu_info(hdu):
     """
     # get header
     head = hdu[0].header
+    npix1 = head["NAXIS1"]
+    npix2 = head["NAXIS2"]
 
-    # get RA and Dec
-    if 'ra' in head['CTYPE1'].lower():
-        rax = 0
-        dax = 1
-    elif 'ra' in had['CTYPE2'].lower():
-        dax = 0
-        rax = 1
-    else:
-        raise ValueError("Couldn't get RA and Dec axes")
+    # get ra and dec arrays
+    w = WCS(hdu[0])
 
-    ra = (np.arange(head['NAXIS{}'.format(rax+1)]) - head['CRPIX{}'.format(rax+1)]) * head['CDELT{}'.format(rax+1)] + head['CRVAL{}'.format(rax+1)]
-    dec = (np.arange(head['NAXIS{}'.format(dax+1)]) - head['CRPIX{}'.format(dax+1)]) * head['CDELT{}'.format(dax+1)] + head['CRVAL{}'.format(dax+1)]
+    # convert pixel to equatorial coordinates
+    lon_arr, lat_arr = np.meshgrid(np.arange(npix1), np.arange(npix2))
+    lon, lat, s, f = w.all_pix2world(lon_arr.ravel(), lat_arr.ravel(), 0, 0, 0)
+    ra = lon.reshape(npix2, npix1)
+    dec = lat.reshape(npix2, npix1)
 
     # get frequencies and polarizations
     if head["CTYPE3"] == "FREQ":
