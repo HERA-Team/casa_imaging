@@ -5,17 +5,16 @@ pbcorr.py
 
 Primary Beam Correction
 on FITS images, with a 
-primary beam healpix model,
-or frequency dependent Gaussians.
+primary beam CST or healpix beam.
 
 Nick Kern
-October, 2018
+July, 2019
 nkern@berkeley.edu
 """
 import numpy as np
 import astropy.io.fits as fits
 from astropy import wcs
-from pyuvdata import UVBeam
+from pyuvdata import uvbeam, utils as uvutils
 import os
 import sys
 import glob
@@ -32,7 +31,7 @@ from astropy import units as u
 
 args = argparse.ArgumentParser(description="Primary beam correction on FITS image files, given primary beam model")
 
-args.add_argument("fitsfiles", type=str, nargs='*', help='path of image FITS file(s) to PB correct')
+args.add_argument("fitsfiles", type=str, nargs='*', help='path of image FITS file(s) to PB correct. assume all fits files have identical metadata except possibly for freq channel.')
 
 # PB args
 args.add_argument("--multiply", default=False, action='store_true', help='multiply data by primary beam, rather than divide')
@@ -41,17 +40,9 @@ args.add_argument("--lat", default=-30.72152, type=float, help="latitude of obse
 args.add_argument("--time", type=float, help='time of middle of observation in Julian Date')
 
 # beam args
-args.add_argument("--beamfile", type=str, help="path to primary beam in pyuvdata.UVBeam format")
+args.add_argument("--beamfile", type=str, help="path to primary beam in pyuvdata.uvbeam format", required=True)
 args.add_argument("--pols", type=int, nargs='*', default=None, help="Polarization integer of healpix maps to use for beam models. Default is to use polarization in fits HEADER.")
 args.add_argument("---freq_interp_kind", type=str, default='cubic', help="Interpolation method across frequency")
-
-# Gaussian Beam args
-args.add_argument("--ew_sig", type=float, default=None, nargs='*',
-                 help="if no healpix map provided, array of gaussian beam sigmas (per freq) in the east-west direction")
-args.add_argument("--ns_sig", type=float, default=None, nargs='*',
-                 help="if no healpix map provided, array of gaussian beam sigmas (per freq) in the north-south direction")
-args.add_argument("--gauss_freqs", type=float, default=None, nargs='*',
-                  help="if no healpix map provided, array of frequencies (Hz) matching length of ew_sig and ns_sig")
 
 # IO args
 args.add_argument("--ext", type=str, default="", help='Extension prefix for output file.')
@@ -74,52 +65,19 @@ if __name__ == "__main__":
     verbose = a.silence == False
 
     # load pb
-    if a.beamfile is not None:
-        echo("...loading beamfile {}".format(a.beamfile))
-        # load beam
-        uvb = UVBeam()
-        uvb.read_beamfits(a.beamfile)
-        if uvb.pixel_coordinate_system == 'healpix':
-            uvb.interpolation_function = 'healpix_simple'
-        else:
-            uvb.interpolation_function = 'az_za_simple'
-
-        # get beam models and beam parameters
-        beam_maps = np.abs(uvb.data_array[0, 0, :, :, :])
-        beam_freqs = uvb.freq_array.squeeze() / 1e6
-        Nbeam_freqs = len(beam_freqs)
-
-        if a.pols is None:
-            pols = uvb.polarization_array
-        else:
-            pols = a.pols
-
-        # construct beam interpolation function
-        def beam_interp_func(theta, phi, pols):
-            '''theta, phi in radians'''
-            beam_interp = uvb.interp(phi.ravel(), theta.ravel(), polarizations=pols, freq_interp_kind=freq_interp_kind, reuse_spline=True)
-            beam_
-            shape = theta.shape
-            return np.array(beam_interp)
-
-    # construct pb
+    echo("...loading beamfile {}".format(a.beamfile))
+    # load beam
+    uvb = UVBeam()
+    uvb.read_beamfits(a.beamfile)
+    if uvb.pixel_coordinate_system == 'healpix':
+        uvb.interpolation_function = 'healpix_simple'
     else:
-        # construct beam interpolation function
-        echo("...constructing beam from Gaussian models")
-        if a.ew_sig is None or a.ns_sig is None:
-            raise AttributeError("if beamfile is None, then must feed ew_sig and ns_sig")
-        def beam_interp_func(theta, phi):
-            '''theta phi in radians'''
-            beam_interp = []
-            psi_ew = theta * np.cos(phi)
-            psi_ns = theta * np.sin(phi)
-            shape = theta.shape
-            for i, (ews, nss) in enumerate(zip(a.ew_sig, a.ns_sig)):
-                m = stats.multivariate_normal.pdf(np.array([psi_ew.ravel(), psi_ns.ravel()]).T, mean=np.zeros(2),
-                                              cov=np.array([[ews**2, 0],[0, nss**2]]))
-                beam_interp.append(m.reshape(shape))
-            return np.array(beam_interp)
-        beam_freqs = np.array(a.gauss_freqs) / 1e6
+        uvb.interpolation_function = 'az_za_simple'
+    uvb.freq_interp_kind = a.freq_interp_kind
+
+    # get beam models and beam parameters
+    beam_freqs = uvb.freq_array.squeeze() / 1e6
+    Nbeam_freqs = len(beam_freqs)
 
     # iterate over FITS files
     for i, ffile in enumerate(a.fitsfiles):
@@ -150,13 +108,9 @@ if __name__ == "__main__":
         head = hdu[0].header
         data = hdu[0].data
 
-        # determine if freq precedes stokes in header
-        if head['CTYPE3'] == 'FREQ':
-            freq_ax = 3
-            stok_ax = 4
-        else:
-            freq_ax = 4
-            stok_ax = 3
+        # get polarization info
+        ra, dec, pol_arr, data_freqs, stok_ax, freq_ax = casa_utils.get_hdu_info(hdu)
+        Ndata_freqs = len(data_freqs)
 
         # get axes info
         npix1 = head["NAXIS1"]
@@ -164,54 +118,38 @@ if __name__ == "__main__":
         nstok = head["NAXIS{}".format(stok_ax)]
         nfreq = head["NAXIS{}".format(freq_ax)]
 
-        # get polarization info
-        pol_arr = np.asarray(head["CRVAL{}".format(stok_ax)] + np.arange(nstok) * head["CDELT{}".format(stok_ax)], dtype=np.int)
-
         # replace with forced polarization if provided
         if a.pols is not None:
             pol_arr = np.asarray(a.pols, dtype=np.int)
 
-        # set beam maps
-        beam_pols = uvb.polarization_array.tolist()
-        beam_maps = np.array([beam_maps[beam_pols.index(p)] for p in pol_arr])
+        pols = [uvutils.polnum2str(pol) for pol in pol_arr]
 
         # make sure required pols exist in maps
         if not np.all([p in uvb.polarization_array for p in pol_arr]):
             raise ValueError("Required polarizationns {} not found in Beam polarization array".format(pol_arr))
 
-        # get WCS
-        w = wcs.WCS(ffile)
-
-        # convert pixel to equatorial coordinates
-        lon_arr, lat_arr = np.meshgrid(np.arange(npix1), np.arange(npix2))
-        lon, lat, s, f = w.all_pix2world(lon_arr.ravel(), lat_arr.ravel(), 0, 0, 0)
-        lon = lon.reshape(npix2, npix1)
-        lat = lat.reshape(npix2, npix1)
-
         # convert from equatorial to spherical coordinates
         loc = crd.EarthLocation(lat=a.lat*u.degree, lon=a.lon*u.degree)
         time = Time(a.time, format='jd', scale='utc')
-        equatorial = crd.SkyCoord(ra=lon*u.degree, dec=lat*u.degree, frame='fk5', location=loc, obstime=time)
+        equatorial = crd.SkyCoord(ra=ra*u.degree, dec=dec*u.degree, frame='fk5', location=loc, obstime=time)
         altaz = equatorial.transform_to('altaz')
         theta = np.abs(altaz.alt.value - 90.0)
         phi = altaz.az.value
 
-        # get data frequencies
-        if freq_ax == 3:
-            data_freqs = w.all_pix2world(0, 0, np.arange(nfreq), 0, 0)[2] / 1e6
-        else:
-            data_freqs = w.all_pix2world(0, 0, 0, np.arange(nfreq), 0)[3] / 1e6
-        Ndata_freqs = len(data_freqs)
+        # convert to radians
+        theta *= np.pi / 180
+        phi *= np.pi / 180
 
         if i == 0 or a.spec_cube is False:
             # evaluate primary beam
             echo("...evaluating PB")
-            pb = beam_interp_func(theta, phi)
+            pb, _ = uvb.interp(phi.ravel(), theta.ravel(), polarizations=pols, reuse_spline=True)
+            pb = np.abs(pb.reshape((len(pols), Nbeam_freqs) + phi.shape))
 
         # interpolate primary beam onto data frequencies
         echo("...interpolating PB")
         pb_shape = (pb.shape[1], pb.shape[2])
-        pb_interp = interpolate.interp1d(beam_freqs, pb, axis=1, kind='linear', fill_value='extrapolate')(data_freqs)
+        pb_interp = interpolate.interp1d(beam_freqs, pb, axis=1, kind=a.freq_interp_kind, fill_value='extrapolate')(data_freqs / 1e6)
 
         # data shape is [naxis4, naxis3, naxis2, naxis1]
         if freq_ax == 4:
