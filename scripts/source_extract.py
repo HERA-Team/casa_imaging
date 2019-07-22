@@ -253,7 +253,7 @@ if __name__ == "__main__":
     args = a.parse_args()
 
     # sort files
-    files = sorted(args.files)
+    files = args.files
 
     # get filename
     if args.outdir is None:
