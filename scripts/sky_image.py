@@ -191,12 +191,14 @@ if __name__ == "__main__":
         out_dir = os.path.dirname(msin)
     else:
         out_dir = args.out_dir
+    args.out_dir = out_dir  # update b/c we use vars(args) below
 
     # check for uvfits
     if base_ms.split('.')[-1] == 'uvfits':
         log("...converting uvfits to ms", type=1, verbose=verbose)
         uvfits = msin
         msin = os.path.join(out_dir, '.'.join(base_ms.split('.')[:-1] + ['ms']))
+        args.msin = msin   # update b/c we use vars(args) below
         base_ms = os.path.basename(msin)
         msfiles = glob.glob("{}*".format(msin))
         if len(msfiles) != 0:
