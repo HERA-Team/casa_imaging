@@ -404,7 +404,7 @@ def skynpz2calfits(fname, uv_file, dly_files=None, amp_files=None, bp_files=None
                 flag_dict[(a, p)] += True
 
     # write to calfits
-    uvc = hc.io.write_cal(fname, gain_dict, freqs, times[:1], flags=flag_dict, outdir=out_dir,
+    uvc = hc.io.write_cal(fname, gain_dict, freqs, np.mean(times, keepdims=True), flags=flag_dict, outdir=out_dir,
                           overwrite=overwrite, gain_convention=gain_convention, zero_check=True)
 
     # plot dlys

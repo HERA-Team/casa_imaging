@@ -57,6 +57,8 @@ a.add_argument("--cal_ext", default="split", type=str, help="Suffix of calibrate
 a.add_argument("--split_model", default=False, action='store_true', help="If True, split model column from input data and append model_ext")
 a.add_argument("--model_ext", default="model", type=str, help="Suffix of model column in MS to split from input data.")
 a.add_argument("--gaintables", default=[], type=str, nargs='*', help="Input gain tables to apply on-the-fly before starting calibration.")
+a.add_argument("--tavgsub", default=False, action='store_true', help="If True, subtract time average from data and model before calibration. "
+                                                                     "Warning: This is an irreversible operation on the data!")
 
 def echo(message, type=0):
     if verbose:
@@ -163,6 +165,30 @@ if __name__ == "__main__":
     if args.rflag is True:
         echo("...rfi flagging", type=1)
         flagdata(msin, mode='rflag')
+
+    # tavg subtract
+    if args.tavgsub:
+        echo("...performing tavgsub: this is an irreversible process on the DATA & MODEL columns", type=1)
+        # open ms
+        ms.open(msin, nomodify=False)
+
+        # get data
+        rec = ms.getdata(['data', 'model_data', 'flag', 'axis_info'], ifraxis=True)
+
+        # form weights
+        weights = (~rec['flag']).astype(np.float)
+
+        # take time average
+        tavg_data = np.sum(rec['data'] * weights, axis=3, keepdims=True) / np.sum(weights, axis=3, keepdims=True).clip(1e-10, np.inf)
+        tavg_mdl = np.sum(rec['model_data'] * weights, axis=3, keepdims=True) / np.sum(weights, axis=3, keepdims=True).clip(1e-10, np.inf)
+
+        # subtract from data
+        rec['data'] -= tavg_data
+        rec['model_data'] = tavg_mdl
+
+        # replace in ms
+        ms.putdata(rec)
+        ms.close()
 
     def make_cal(cal):
         if args.gain_ext != '':
