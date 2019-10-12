@@ -14,7 +14,7 @@ nkern@berkeley.edu
 November, 2018
 """
 import numpy as np
-from pyuvdata import UVData
+from pyuvdata import UVData, UVFlag
 import pyuvdata.utils as uvutils
 import casa_imaging
 from casa_imaging import casa_utils as utils
@@ -192,21 +192,33 @@ if params['prep_data']:
             else:
                 source_files = datafiles
 
+            # get flag files
+            if p.flag_ext not in [None, "", "None", "none"]:
+                # interpret as glob parseable path
+                flagfiles = sorted(glob.glob(os.path.join(params['data_root'], p.flag_ext)))
+                if len(flagfiles) > 0:
+                    # assert lengths matches source files
+                    assert len(flagfiles) == len(source_files)
+                else:
+                    # interpret as stem extension to source_files
+                    flagfiles = [os.path.splitext(sf)[0] + p.flag_ext for sf in source_files]
+            else:
+                flagfiles = None
+
             # load data into UVData
             utils.log("...loading data", f=lf, verbose=verbose)
             _uvds = []
-            for sf in list(source_files):
+            for i, sf in enumerate(list(source_files)):
                 # read data
                 _uvd = UVData()
                 _uvd.read(sf, antenna_nums=p.antenna_nums)
 
-                # read flagfile if fed
-                if p.flag_ext != "":
-                    flagfile = glob.glob("{}{}".format(sf, p.flag_ext))
-                    if len(flagfile) == 1:
-                        utils.log("...loading and applying flags {}".format(flagfile[0]), f=lf, verbose=verbose)
-                        ff = np.load(flagfile[0])
-                        _uvd.flag_array += ff['flag_array']
+                # read and apply flagfile if fed
+                if flagfiles is not None:
+                    ff = flagfiles[i]
+                    utils.log("...applying flags {}".format(ff), f=lf, verbose=verbose)
+                    uvf = UVFlag(ff)
+                    uvutils.apply_uvflag(_uvd, uvf, force_pol=True, flag_missing=True, inplace=True)
 
                 # append to list
                 _uvds.append(_uvd)
