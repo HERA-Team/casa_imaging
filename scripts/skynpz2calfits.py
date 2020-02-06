@@ -106,7 +106,7 @@ def skynpz2calfits(fname, uv_file, dly_files=None, amp_files=None, bp_files=None
     Nfreqs = len(freqs)
     Nants = len(ants)
     pols = uvd.polarization_array
-    jones = np.array([uvutils.jnum2str(p) for p in pols])
+    jones = np.array([uvutils.jnum2str(p, x_orientation=uvd.x_orientation) for p in pols])
     Njones = len(jones)
 
     # construct blank gains and flags
@@ -405,7 +405,7 @@ def skynpz2calfits(fname, uv_file, dly_files=None, amp_files=None, bp_files=None
 
     # write to calfits
     uvc = hc.io.write_cal(fname, gain_dict, freqs, np.mean(times, keepdims=True), flags=flag_dict, outdir=out_dir,
-                          overwrite=overwrite, gain_convention=gain_convention, zero_check=True)
+                          overwrite=overwrite, gain_convention=gain_convention, zero_check=True, x_orientation=uvd.x_orientation)
 
     # plot dlys
     if plot_dlys:
