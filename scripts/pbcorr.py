@@ -28,6 +28,7 @@ from scipy import interpolate
 from astropy.time import Time
 from astropy import coordinates as crd
 from astropy import units as u
+import warnings
 
 
 args = argparse.ArgumentParser(description="Primary beam correction on FITS image files, given primary beam model")
@@ -39,6 +40,7 @@ args.add_argument("--multiply", default=False, action='store_true', help='multip
 args.add_argument("--lon", default=21.42830, type=float, help="longitude of observer in degrees east")
 args.add_argument("--lat", default=-30.72152, type=float, help="latitude of observer in degrees north")
 args.add_argument("--time", type=float, help='time of middle of observation in Julian Date')
+args.add_argument("--image_x_orientation", default='east', type=str, help='x_orientation of fitsfiles, either ["east", "north"]. default is "east"')
 
 # beam args
 args.add_argument("--beamfile", type=str, help="path to primary beam in pyuvdata.uvbeam format", required=True)
@@ -79,6 +81,11 @@ if __name__ == "__main__":
     # get beam models and beam parameters
     beam_freqs = uvb.freq_array.squeeze() / 1e6
     Nbeam_freqs = len(beam_freqs)
+    if uvb.x_orientation is None:
+        # assume default is east
+        warnings.warn("no x_orientation found in beam: assuming 'east' by default")
+        uvb.x_orientation = 'east'
+    beam_pols = [uvutils.polnum2str(p, x_orientation=uvb.x_orientation) for p in uvb.polarization_array]
 
     # iterate over FITS files
     for i, ffile in enumerate(a.fitsfiles):
@@ -122,12 +129,11 @@ if __name__ == "__main__":
         # replace with forced polarization if provided
         if a.pols is not None:
             pol_arr = np.asarray(a.pols, dtype=np.int)
-
-        pols = [uvutils.polnum2str(pol) for pol in pol_arr]
+        pols = [uvutils.polnum2str(pol, x_orientation=a.image_x_orientation) for pol in pol_arr]
 
         # make sure required pols exist in maps
-        if not np.all([p in uvb.polarization_array for p in pol_arr]):
-            raise ValueError("Required polarizationns {} not found in Beam polarization array".format(pol_arr))
+        if not np.all([p in beam_pols for p in pols]):
+            raise ValueError("Required polarizationns {} not all found in beam polarization array".format(pols))
 
         # convert from equatorial to spherical coordinates
         loc = crd.EarthLocation(lat=a.lat*u.degree, lon=a.lon*u.degree)
