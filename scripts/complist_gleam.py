@@ -84,10 +84,10 @@ if __name__ == "__main__":
 
     # get fluxes
     if a.use_peak:
-        fstr = "Fp{:d}"
+        fstr = "Fp{:03d}"
         fluxes = data[fstr.format(args.anchor_spw)]
     else:
-        fstr = "Fint{:d}"
+        fstr = "Fint{:03d}"
         fluxes = data[fstr.format(args.anchor_spw)]
 
     # correct for wrapping RA
