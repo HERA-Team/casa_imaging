@@ -33,6 +33,7 @@ args.add_argument("--overwrite", default=False, action='store_true', help="Overw
 args.add_argument("--point_ra", type=float, help="Pointing RA in degrees 0 < ra < 360.")
 args.add_argument("--point_dec", type=float, help="Pointing Dec in degrees -90 < dec < 90.")
 args.add_argument("--radius", type=float, default=5.0, help="Radius in degrees around pointing to get GLEAM sources.")
+args.add_argument("--anchor_spw", type=int, default=151, help='Anchor photometric band (MHz) for complist. Default is 151')
 args.add_argument("--min_flux", default=0.0, type=float, help="Minimum flux at 151 MHz of sources to include in model.")
 args.add_argument("--image", default=False, action='store_true', help='Make a FITS image of model')
 args.add_argument("--freqs", default=None, type=str, help="Comma-separated values [MHz] for input into np.linspace({},{},{},endpoint=False)")
@@ -45,6 +46,7 @@ args.add_argument("--region_radius", default=None, type=float, help="If providin
 args.add_argument("--exclude", default=False, action='store_true', help="If providing regions via --regions, exclude souces within masks, " \
                     "rather than only including sources within masks per default behavior.")
 args.add_argument("--complists", type=str, nargs='*', default=None, help="Additional CASA component list strings or filepath to complist scripts.")
+args.add_argument("--exclude_nan_spix", default=False, action='store_true', help='If a source has a NaN spix, exclude it from complist, otherwise try to estimate it from photometry.')
 
 if __name__ == "__main__":
     a = args.parse_args()
@@ -83,10 +85,10 @@ if __name__ == "__main__":
     # get fluxes
     if a.use_peak:
         fstr = "Fp{:d}"
-        fluxes = data['Fp151']
+        fluxes = data[fstr.format(args.anchor_spw)]
     else:
         fstr = "Fint{:d}"
-        fluxes = data['Fint151']
+        fluxes = data[fstr.format(args.anchor_spw)]
 
     # correct for wrapping RA
     if a.point_ra < a.radius:
@@ -131,6 +133,8 @@ if __name__ == "__main__":
 
         # if spectral index is a nan, try to derive it by hand
         if np.isnan(spix):
+            if args.exclude_nan_spix:
+                continue
             frq = np.array([122., 130., 143., 151., 158., 166., 174.])
             x = []
             xstr = []
