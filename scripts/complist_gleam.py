@@ -85,10 +85,10 @@ if __name__ == "__main__":
     # get fluxes
     if a.use_peak:
         fstr = "Fp{:03d}"
-        fluxes = data[fstr.format(args.anchor_spw)]
+        fluxes = data[fstr.format(a.anchor_spw)]
     else:
         fstr = "Fint{:03d}"
-        fluxes = data[fstr.format(args.anchor_spw)]
+        fluxes = data[fstr.format(a.anchor_spw)]
 
     # correct for wrapping RA
     if a.point_ra < a.radius:
@@ -133,7 +133,7 @@ if __name__ == "__main__":
 
         # if spectral index is a nan, try to derive it by hand
         if np.isnan(spix):
-            if args.exclude_nan_spix:
+            if a.exclude_nan_spix:
                 continue
             frq = np.array([122., 130., 143., 151., 158., 166., 174.])
             x = []
