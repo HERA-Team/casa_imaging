@@ -70,7 +70,7 @@ a.add_argument("--multiprocess", default=False, action='store_true', help="Try t
 a.add_argument("--Nproc", default=4, type=int, help="Number of processing to spawn in pooling.")
 a.add_argument("--savemodel", default=False, action='store_true', help="When CLEANing, store FT of model components in MODEL column of MS.")
 a.add_argument("--uvsub", default=False, action='store_true', help="Before imaging, subtract MODEL column from CORRECTED_DATA column if it exists (or DATA column otherwise).")
-a.add_argument("--gridder", default='wproject', type=str, help="Gridding algorithm in tclean. Options=['standard', 'wproject', 'widefield']. Note that gridder='wproject' and wprojplanes=1 is equivalent to gridder='standard'.")
+a.add_argument("--gridder", default='standard', type=str, help="Gridding algorithm in tclean. Options=['standard', 'wproject', 'widefield']. Note that gridder='wproject' and wprojplanes=1 is equivalent to gridder='standard'.")
 a.add_argument("--wprojplanes", default=1, type=int, help="Number of W-values to use for computing W-projection kernel. Default=1 is standard non-Wprojection gridding.")
 # Plotting Arguments
 a.add_argument("--plot_uvdist", default=False, action='store_true', help='make a uvdist plot')
