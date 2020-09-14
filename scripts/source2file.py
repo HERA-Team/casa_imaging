@@ -24,7 +24,7 @@ ap.add_argument("--duration", default=2.0, type=float, help="duration in minutes
 ap.add_argument("--offset", default=0.0, type=float, help="offset from closest approach in minutes")
 ap.add_argument("--jd_files", default=None, type=str, nargs='*', help="glob-parsable search of files to isolate calibrator within.")
 ap.add_argument("--get_filetimes", default=False, action='store_true', help="open source files and get more accurate duration timerange")
-
+ap.add_argument("--filetype", default='uvh5', type=str, help="filetypes")
 
 def echo(message, type=0, verbose=True):
     if verbose:
@@ -76,16 +76,23 @@ def source2file(ra, lon=21.428305555, lat=-30.72152, duration=2.0, offset=0.0, s
         if len(files) == 0:
             raise AttributeError("length of jd_files is zero")
 
-        # keep files with start_JD in them
+        # try getting start JD of file from filename, otherwise open file
         file_jds = []
+        file_uvs = []
         for i, f in enumerate(files):
             if str(start_jd) not in f:
-                files.remove(f)
+                uv = UVData()
+                uv.read(sf, read_data=filetype.lower()=='miriad')
+                file_jds.append(uv.time_array.min())
+                file_uvs.append(uv)
             else:
                 fjd = os.path.basename(f).split('.')
                 findex = fjd.index(str(start_jd))
                 file_jds.append(float('.'.join(fjd[findex:findex+2])))
+
         files = np.array(files)[np.argsort(file_jds)]
+        if len(file_uvs) > 0:
+            file_uvs = np.array(file_uvs)[np.argsort(file_jds)]
         file_jds = np.array(file_jds)[np.argsort(file_jds)]
 
         # get file with closest jd1 that doesn't exceed it
@@ -116,8 +123,12 @@ def source2file(ra, lon=21.428305555, lat=-30.72152, duration=2.0, offset=0.0, s
             # Get UTC timerange of source in files
             file_jds = []
             for i, sf in enumerate(source_files):
-                uv = UVData()
-                uv.read(sf, read_data=filetype=='miriad')
+                # check if file was already opened
+                if len(file_uvs) > 0:
+                    uv = file_uvs[list(files).index(sf)]
+                else:
+                    uv = UVData()
+                    uv.read(sf, read_data=filetype=='miriad')
                 file_jds.extend(np.unique(uv.time_array))
             file_jds = np.array(file_jds)
             file_delta_jd = np.median(np.diff(file_jds))
