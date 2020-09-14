@@ -82,7 +82,7 @@ def source2file(ra, lon=21.428305555, lat=-30.72152, duration=2.0, offset=0.0, s
         for i, f in enumerate(files):
             if str(start_jd) not in f:
                 uv = UVData()
-                uv.read(sf, read_data=filetype.lower()=='miriad')
+                uv.read(f, read_data=filetype.lower()=='miriad')
                 file_jds.append(uv.time_array.min())
                 file_uvs.append(uv)
             else:
