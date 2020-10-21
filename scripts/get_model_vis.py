@@ -60,6 +60,10 @@ if __name__ == "__main__":
     # phase the data
     uvm.phase_to_time(np.median(uvd.time_array))
 
+    # fix nsample == 0 issue if it exists
+    if np.isclose(uvm.nsample_array, 0).all():
+        uvm.nsample_array[:] = 1.0
+
     # write uvfits to outdir
     outname = os.path.basename(a.filename).replace('uvh5', 'model.uvfits')
     uvm.write_uvfits(os.path.join(a.outdir, outname), spoof_nonessential=True)
