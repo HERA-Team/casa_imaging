@@ -41,8 +41,10 @@ if __name__ == "__main__":
     # get files that overlap filename
     model_files = []
     for i, mf_lst in enumerate(mfile_lsts):
-        if mf_lst[1] > lst_bounds[0] and mf_lst[0] < lst_bounds[0]:
+        if mf_lst[1] > lst_bounds[0] and mf_lst[0] < lst_bounds[1]:
             model_files.append(mfiles[i])
+    if len(model_files) == 0:
+        sys.exit(0)
 
     # load model
     uvm = UVData()
