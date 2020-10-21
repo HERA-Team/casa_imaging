@@ -24,6 +24,8 @@ if __name__ == "__main__":
         lst_bounds[1] += 2*np.pi
 
     # get model visibilities
+    if a.model_vis is None:
+        sys.exit(0)
     mfiles = sorted(glob.glob(a.model_vis))
     if len(mfiles) == 0:
         sys.exit(0)
@@ -56,5 +58,5 @@ if __name__ == "__main__":
     uvm.select(times=np.unique(uvm.time_array)[tinds])
 
     # write uvfits to outdir
-    outname = os.path.basename(filename).replace('uvh5', 'model.uvfits')
+    outname = os.path.basename(a.filename).replace('uvh5', 'model.uvfits')
     uvm.write_uvfits(os.path.join(a.outdir, outname))
