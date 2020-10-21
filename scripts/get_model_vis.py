@@ -57,6 +57,9 @@ if __name__ == "__main__":
     tinds = (uvm_lsts >= lst_bounds[0]) & (uvm_lsts <= lst_bounds[1])
     uvm.select(times=np.unique(uvm.time_array)[tinds])
 
+    # phase the data
+    uvm.phase_to_time(np.median(uvd.time_array))
+
     # write uvfits to outdir
     outname = os.path.basename(a.filename).replace('uvh5', 'model.uvfits')
-    uvm.write_uvfits(os.path.join(a.outdir, outname))
+    uvm.write_uvfits(os.path.join(a.outdir, outname), spoof_nonessential=True)
