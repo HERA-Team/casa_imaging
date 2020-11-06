@@ -4,6 +4,9 @@ import argparse
 import glob
 import os
 import sys
+import hera_cal as hc
+import copy
+
 
 ap = argparse.ArgumentParser(description='')
 
@@ -18,7 +21,7 @@ if __name__ == "__main__":
 
     # load filename metadata
     uvd = UVData()
-    uvd.read(a.filename, read_data=False)
+    uvd.read(a.filename, read_data=True)
     lst_bounds = [uvd.lst_array.min(), uvd.lst_array.max()]
     if lst_bounds[1] < lst_bounds[0]:
         lst_bounds[1] += 2*np.pi
@@ -57,13 +60,27 @@ if __name__ == "__main__":
     tinds = (uvm_lsts >= lst_bounds[0]) & (uvm_lsts <= lst_bounds[1])
     uvm.select(times=np.unique(uvm.time_array)[tinds])
 
-    # phase the data
-    uvm.phase_to_time(np.median(uvd.time_array))
+    # expand to data baselines
+    data_bls = uvd.get_antpairpols()
+    data_antpos, data_ants = uvd.get_ENU_antpos()
+    data_antpos_dict = dict(zip(data_ants, data_antpos))
+    model_bls = uvm.get_antpairpols()
+    model_antpos, model_ants = uvm.get_ENU_antpos()
+    model_antpos_dict = dict(zip(model_ants, model_antpos))
+    _, _, d2m = hc.abscal.match_baselines(data_bls, model_bls, data_antpos_dict, model_antpos_dict)
 
-    # fix nsample == 0 issue if it exists
-    if np.isclose(uvm.nsample_array, 0).all():
-        uvm.nsample_array[:] = 1.0
+    # copy data and insert model baselines
+    uvd2 = copy.deepcopy(uvd)
+    for blp in data_bls:
+        mblp = d2m[blp]
+        bltinds = uvd2.antpair2ind(blp)
+        pol_int = uvutils.polstr2num(blp[2], x_orientation=uvd2.x_orientation)
+        polind = uvd2.polarization_array.tolist().index(pol_int)
+        uvd2.data_array[bltinds, 0, :, polind] = uvm.get_data(mblp)
+
+    # phase the data
+    uvd2.phase_to_time(np.median(uvd2.time_array))
 
     # write uvfits to outdir
     outname = os.path.basename(a.filename).replace('uvh5', 'model.uvfits')
-    uvm.write_uvfits(os.path.join(a.outdir, outname), spoof_nonessential=True)
+    uvd2.write_uvfits(os.path.join(a.outdir, outname), spoof_nonessential=True)
