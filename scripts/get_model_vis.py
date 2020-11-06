@@ -8,7 +8,7 @@ import hera_cal as hc
 import copy
 
 
-ap = argparse.ArgumentParser(description='')
+ap = argparse.ArgumentParser(description='Match model vis to data file, and write model and its residual.')
 
 ap.add_argument("filename", type=str, help="Filename to image")
 ap.add_argument("model_vis", type=str, help="glob-parseable path to model visibilities")
@@ -69,20 +69,31 @@ if __name__ == "__main__":
     model_bls = uvm.get_antpairpols()
     model_antpos, model_ants = uvm.get_ENU_antpos()
     model_antpos_dict = dict(zip(model_ants, model_antpos))
-    _, _, d2m = hc.abscal.match_baselines(data_bls, model_bls, data_antpos_dict, model_antpos_dict)
+    _, _, d2m = hc.abscal.match_baselines(data_bls, model_bls, data_antpos_dict, model_antpos_dict,
+                                          model_is_redundant=True)
 
-    # copy data and insert model baselines
-    uvd2 = copy.deepcopy(uvd)
+    # construct model and residual
+    mod, res = copy.deepcopy(uvd), copy.deepcopy(uvd)
     for blp in data_bls:
-        mblp = d2m[blp]
-        bltinds = uvd2.antpair2ind(blp)
-        pol_int = uvutils.polstr2num(blp[2], x_orientation=uvd2.x_orientation)
-        polind = uvd2.polarization_array.tolist().index(pol_int)
-        uvd2.data_array[bltinds, 0, :, polind] = uvm.get_data(mblp)
+        # get indices in data
+        bltinds = mod.antpair2ind(blp)
+        pol_int = uvutils.polstr2num(blp[2], x_orientation=mod.x_orientation)
+        polind = mod.polarization_array.tolist().index(pol_int)
+        # if blp in d2m fill it, otherwise flag it
+        if blp in d2m:
+            mblp = d2m[blp]
+            mod.data_array[bltinds, 0, :, polind] = uvm.get_data(mblp)
+            res.data_array[bltinds, 0, :, polind] -= uvm.get_data(mblp)
+        else:
+            mod.flag_array[bltinds, 0, :, polind] = True
+            res.flag_array[bltinds, 0, :, polind] = True
 
     # phase the data
-    uvd2.phase_to_time(np.median(uvd2.time_array))
+    mod.phase_to_time(np.median(mod.time_array))
+    res.phase_to_time(np.median(res.time_array))
 
     # write uvfits to outdir
     outname = os.path.basename(a.filename).replace('uvh5', 'model.uvfits')
-    uvd2.write_uvfits(os.path.join(a.outdir, outname), spoof_nonessential=True)
+    mod.write_uvfits(os.path.join(a.outdir, outname), spoof_nonessential=True)
+    outname = os.path.basename(a.filename).replace('uvh5', 'res.uvfits')
+    res.write_uvfits(os.path.join(a.outdir, outname), spoof_nonessential=True)
