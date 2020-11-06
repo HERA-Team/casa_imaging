@@ -42,6 +42,8 @@ if __name__ == "__main__":
     mfile_lsts = np.unwrap(mfile_lsts, axis=0)
     if mfile_lsts[0, 1] < mfile_lsts[0, 0]:
         mfile_lsts[:, 1] += 2*np.pi
+    if mfile_lsts.min() > lst_bounds[1]:
+        mfile_lsts -= 2*np.pi
 
     # get files that overlap filename
     model_files = []
