@@ -10,7 +10,7 @@ from casa_imaging import casa_utils
 import os
 
 
-ap = argparse.ArgumentParser(description='Plot fits file. Output is basename + pol + .png for each pol in FITS file.')
+ap = argparse.ArgumentParser(description='Plot fits file. Output is basename.png.')
 
 ap.add_argument("filename", type=str, help="FITS filename to plot")
 ap.add_argument("--outdir", type=str, default='./', help='Output path to write file')
@@ -56,16 +56,16 @@ if __name__ == "__main__":
         vmax = vmax * Npols
     vmin, vmax = [float(vm) for vm in vmin], [float(vm) for vm in vmax]
 
-    # iterate over each pol in FITS files
+    fig = plt.figure(figsize=(5 * Npol, 5), dpi=100)
+    fig.subplots_adjust(wspace=0.1)
+    # iterate over pol
     for i, pol in enumerate(pols):
-
-        fig = plt.figure(figsize=(5, 5), dpi=100)
-        ax = fig.add_subplot(111, projection=wcs)
+        ax = fig.add_subplot("1{}{}".format(Npol, i+1), projection=wcs)
         xax, yax = ax.coords[0], ax.coords[1]
-
         cax = ax.imshow(data[i, 0], aspect='auto', origin='lower', vmin=vmin[i], vmax=vmax[i], cmap=cmap[i])
         ax.set_xlabel(r'Right Ascension', fontsize=16, labelpad=0.75)
-        ax.set_ylabel(r'Declination', fontsize=16, labelpad=0.75)
+        if i == 0:
+            ax.set_ylabel(r'Declination', fontsize=16, labelpad=0.75)
         casa_utils.set_xlim(ax, wcs, xlim, center[1])
         casa_utils.set_ylim(ax, wcs, ylim, center[0])
         ax.tick_params(labelsize=16, direction='in')
@@ -73,14 +73,17 @@ if __name__ == "__main__":
         xax.set_ticks_position('b'); yax.set_ticks_position('l')
         xax.set_major_formatter('d')
         bmaj, bmin, bpa = casa_utils.get_beam_info(hdu)
-        casa_utils.plot_beam(ax, wcs, bmaj, bmin, bpa, frac=np.max([.15 - (a.radius-5)/350, .02]), pad=1.5)
+        if i == 0:
+            casa_utils.plot_beam(ax, wcs, bmaj, bmin, bpa, frac=np.max([.15 - (a.radius-5)/350, .02]), pad=1.5)
         cbax, cbar = casa_utils.top_cbar(fig, ax, cax, size='5%', label='Jy/beam', pad=0.1, length=5, labelsize=14, fontsize=16, minpad=.5)
         ax.grid(color='k', ls='--')
-        ax.text(0.03, 0.88, "{} polarization\n{:.1f} MHz".format(pols[i], freq/1e6),
-                fontsize=15, color='k', transform=ax.transAxes,
+        tag = "{} polarization".format(pols[i])
+        if i == 0:
+            tag += "\n{:.1f} MHz".format(freq/1e6)
+        ax.text(0.03, 0.85, tag, fontsize=15, color='k', transform=ax.transAxes,
                 bbox=dict(boxstyle='square', fc='w', ec='None', alpha=0.8, pad=.2))
 
-        fname = os.path.splitext(os.path.basename(a.filename))
-        fname = os.path.join(a.outdir, fname[0] + '.{}.png'.format(pols[i]))
-        fig.savefig(fname, dpi=100, bbox_inches='tight')
-        plt.close()
+    fname = os.path.splitext(os.path.basename(a.filename))
+    fname = os.path.join(a.outdir, fname[0] + '.png')
+    fig.savefig(fname, dpi=100, bbox_inches='tight')
+    plt.close()
