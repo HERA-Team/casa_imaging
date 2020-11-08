@@ -63,26 +63,26 @@ if __name__ == "__main__":
         ax = fig.add_subplot("1{}{}".format(Npols, i+1), projection=wcs)
         xax, yax = ax.coords[0], ax.coords[1]
         cax = ax.imshow(data[i, 0], aspect='auto', origin='lower', vmin=vmin[i], vmax=vmax[i], cmap=cmap[i])
-        ax.set_xlabel(r'Right Ascension', fontsize=16, labelpad=0.75)
-        if i == 0:
-            ax.set_ylabel(r'Declination', fontsize=16, labelpad=0.75)
         casa_utils.set_xlim(ax, wcs, xlim, center[1])
         casa_utils.set_ylim(ax, wcs, ylim, center[0])
-        ax.tick_params(labelsize=16, direction='in')
+        ax.tick_params(labelsize=14, direction='in')
         xax.tick_params(length=5); yax.tick_params(length=5)
         xax.set_ticks_position('b'); yax.set_ticks_position('l')
         xax.set_major_formatter('d')
+        ax.set_xlabel(r'Right Ascension', fontsize=16, labelpad=0.75)
+        if i == 0:
+            ax.set_ylabel(r'Declination', fontsize=16, labelpad=0.75)
+        else:
+            yax.set_ticklabel_visible(False)
         bmaj, bmin, bpa = casa_utils.get_beam_info(hdu)
         if i == 0:
             casa_utils.plot_beam(ax, wcs, bmaj, bmin, bpa, frac=np.max([.15 - (a.radius-5)/350, .02]), pad=1.5)
-        cbax, cbar = casa_utils.top_cbar(fig, ax, cax, size='5%', label='Jy/beam', pad=0.1, length=5, labelsize=14, fontsize=16, minpad=.5)
+        cbax, cbar = casa_utils.top_cbar(fig, ax, cax, size='5%', label='Jy/beam', pad=0.1, length=5, labelsize=14, fontsize=16, minpad=1)
         ax.grid(color='k', ls='--')
-        tag = "{} polarization".format(pols[i])
-        if i == 0:
-            tag += "\n{:.1f} MHz".format(freq/1e6)
-        ax.text(0.03, 0.85, tag, fontsize=15, color='k', transform=ax.transAxes,
+        tag = "{} polarization\n{:.1f} MHz".format(pols[i], freq/1e6)
+        ax.text(0.03, 0.88, tag, fontsize=15, color='k', transform=ax.transAxes,
                 bbox=dict(boxstyle='square', fc='w', ec='None', alpha=0.8, pad=.2))
-
+ 
     fname = os.path.splitext(os.path.basename(a.filename))
     fname = os.path.join(a.outdir, fname[0] + '.png')
     fig.savefig(fname, dpi=100, bbox_inches='tight')
