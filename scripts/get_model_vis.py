@@ -29,6 +29,7 @@ if __name__ == "__main__":
     # get model visibilities
     if a.model_vis is None:
         sys.exit(0)
+    a.model_vis = a.model_vis.strip("'")  # somtimes it has extra quotes
     mfiles = sorted(glob.glob(a.model_vis))
     if len(mfiles) == 0:
         sys.exit(0)
