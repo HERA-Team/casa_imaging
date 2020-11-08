@@ -7,6 +7,8 @@ Use CASA to make a multi-frequency synthesis image of a measurement set.
 from __future__ import print_function, division, absolute_import
 import os
 import argparse
+import shutil
+import glob
 
 # define argument parser
 a = argparse.ArgumentParser(description="Run with: casa -c rtp_imaging.py <args>")
@@ -64,12 +66,18 @@ def main():
         exportfits(imagename=stokes_imname, fitsimage=stokes_fits)
         exportfits(imagename=vispol_imname, fitsimage=vispol_fits)
 
-        stokes_psf = image + ".psf"
-        vispol_psf = vispolimname + ".psf"
-        stokes_fits = stokes_psf + ".fits"
-        vispol_fits = vispol_psf + ".fits"
-        exportfits(imagename=stokes_psf, fitsimage=stokes_fits)
-        exportfits(imagename=vispol_psf, fitsimage=vispol_fits)
+        # remove CASA output
+        for suf in ['image', 'psf', 'flux', 'model', 'residual']:
+            rmfiles = glob.glob("*{}".format(suf))
+            for rmf in rmfiles:
+                shutil.rmtree(rmf)
+
+        #stokes_psf = image + ".psf"
+        #vispol_psf = vispolimname + ".psf"
+        #stokes_fits = stokes_psf + ".fits"
+        #vispol_fits = vispol_psf + ".fits"
+        #exportfits(imagename=stokes_psf, fitsimage=stokes_fits)
+        #exportfits(imagename=vispol_psf, fitsimage=vispol_fits)
 
     return
 
