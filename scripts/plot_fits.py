@@ -56,7 +56,7 @@ if __name__ == "__main__":
         vmax = vmax * Npols
     vmin, vmax = [float(vm) for vm in vmin], [float(vm) for vm in vmax]
 
-    fig = plt.figure(figsize=(5 * Npol, 5), dpi=100)
+    fig = plt.figure(figsize=(5 * Npols, 5), dpi=100)
     fig.subplots_adjust(wspace=0.1)
     # iterate over pol
     for i, pol in enumerate(pols):
