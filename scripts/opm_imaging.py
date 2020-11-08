@@ -58,7 +58,7 @@ def main():
 
         # export images to FITS
         stokes_imname = imagename + ".stokpol.image"
-        vispol_imname = vispolimname + ".vispol.image"
+        vispol_imname = imagename + ".vispol.image"
         stokes_fits = stokes_imname + ".fits"
         vispol_fits = vispol_imname + ".fits"
         print("exporting to FITS...")
