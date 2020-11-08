@@ -29,7 +29,7 @@ setup_args = {
     'scripts': ['scripts/pbcorr.py', 'scripts/source2file.py', 'scripts/make_model_cube.py',
                 'scripts/skynpz2calfits.py', 'scripts/source_extract.py',
                 'scripts/find_sources.py', 'scripts/calfits_to_Bcal.py',
-                'pipelines/skycal_pipe.py'],
+                'pipelines/skycal_pipe.py', 'scripts/get_model_vis.py', 'scripts/plot_fits.py'],
     'version': '0.1',
     'package_data': {'casa_imaging': data_files},
     'zip_safe': False,
