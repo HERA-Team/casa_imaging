@@ -60,7 +60,7 @@ if __name__ == "__main__":
     fig.subplots_adjust(wspace=0.1)
     # iterate over pol
     for i, pol in enumerate(pols):
-        ax = fig.add_subplot("1{}{}".format(Npol, i+1), projection=wcs)
+        ax = fig.add_subplot("1{}{}".format(Npols, i+1), projection=wcs)
         xax, yax = ax.coords[0], ax.coords[1]
         cax = ax.imshow(data[i, 0], aspect='auto', origin='lower', vmin=vmin[i], vmax=vmax[i], cmap=cmap[i])
         ax.set_xlabel(r'Right Ascension', fontsize=16, labelpad=0.75)
