@@ -20,8 +20,6 @@ def main():
     # parse arguments
     args = a.parse_args()
 
-    # convert from uvfits to 
-
     # make sure we were given appropriate values
     visname = args.uvfitsname
     if not os.path.isfile(visname):
@@ -41,7 +39,7 @@ def main():
     importuvfits(visname, msname)
 
     # parse spectral window
-    spws = a.spw.split(',')
+    spws = args.spw.split(',')
     for i, spw in enumerate(spws):
 
         imagename = image + '.spw{}'.format(i)
