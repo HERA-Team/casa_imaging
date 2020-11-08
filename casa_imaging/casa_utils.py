@@ -13,6 +13,7 @@ from collections import OrderedDict as odict
 import datetime
 import sys
 
+
 def get_hdu_info(hdu):
     """
     Get info from a CASA-exported FITS header-unit list.
@@ -317,4 +318,52 @@ def get_elapsed_time(time1, time2):
     end = time2.day*24*3600 + time2.hour*3600 + time2.minute*60 + time2.second
 
     return end - start
+
+
+### Plotting Functions ###
+def set_xlim(ax, wcs, xlim, ycent):
+    '''set xlim of plot'''
+    coords = wcs.wcs_world2pix(np.array([[xlim[0], ycent], [xlim[1], ycent]]), 1)
+    ax.set_xlim(coords[:, 0])
+
+def set_ylim(ax, wcs, ylim, xcent):
+    '''set ylim'''
+    coords = wcs.wcs_world2pix(np.array([[xcent, ylim[0]], [xcent, ylim[1]]]), 1)
+    ax.set_ylim(coords[:, 1])
+
+def plot_beam(ax, wcs, bmaj, bmin, bpa, frac=0.075, pad=3):
+    '''plot beam ellipse in lower left corner'''
+    import matplotlib
+    # anchor position
+    xlim, ylim = ax.get_xlim(), ax.get_ylim()
+    cpix = xlim[0] + np.diff(xlim)[0] * frac, ylim[0] + np.diff(ylim)[0] * frac
+    cworld = wcs.wcs_pix2world(np.array([cpix]), 0)
+    dra = wcs.to_header()['CDELT1']
+    ddec = wcs.to_header()['CDELT2']
+    # make box
+    bmaj_px = abs(bmaj / dra)
+    bmin_px = abs(bmin / dra)
+    l = bmaj_px * pad
+    r = matplotlib.patches.Rectangle((cpix[0] - l/2, cpix[1] - l/2), l, l, facecolor='w', edgecolor='k',
+                                     lw=0.75, zorder=100)
+    ax.add_artist(r)
+    e = matplotlib.patches.Ellipse(cpix, bmaj_px, bmin_px, bpa+90, facecolor='k', zorder=101)
+    ax.add_artist(e)
+
+def top_cbar(fig, ax, cax, label='Jy/beam', size='4%', pad=0.1, length=5, labelsize=16, fontsize=20, minpad=1):
+    '''make a top colorbar'''
+    from mpl_toolkits.axes_grid1 import make_axes_locatable
+    divider = make_axes_locatable(ax)
+    cbax = divider.append_axes('top', size=size, pad=pad)
+    cbar = fig.colorbar(cax, cax=cbax, orientation='horizontal')
+    cbax.grid(False)
+    xax, yax = cbax.coords[0], cbax.coords[1]
+    xax.set_ticks_position('t')
+    xax.set_ticklabel_position('t')
+    yax.set_ticks_visible(False)
+    yax.set_ticklabel_visible(False)
+    xax.tick_params(length=length, labelsize=labelsize)
+    xax.set_axislabel(label, fontsize=fontsize, minpad=minpad)
+    xax.set_axislabel_position('t')
+    return cbax, cbar
 
