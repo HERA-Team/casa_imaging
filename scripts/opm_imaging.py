@@ -58,7 +58,7 @@ def main():
               spw=spw, stokes="XXYY")
 
         # export images to FITS
-        stokes_imname = image + ".image"
+        stokes_imname = imagename + ".image"
         vispol_imname = vispolimname + ".image"
         stokes_fits = stokes_imname + ".fits"
         vispol_fits = vispol_imname + ".fits"
