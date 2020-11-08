@@ -48,18 +48,17 @@ def main():
 
         # call imaging commands
         print("running CLEAN tasks...")
-        clean(vis=msname, imagename=imagename, niter=0, weighting="briggs", robust=0,
+        clean(vis=msname, imagename=imagename + ".stokpol", niter=0, weighting="briggs", robust=0,
               imsize=[512, 512], cell=["500 arcsec"], mode="mfs", nterms=1,
               spw=spw, stokes="IQUV")
 
-        vispolimname = imagename + ".vispol"
-        clean(vis=msname, imagename=vispolimname, niter=0, weighting="briggs", robust=0,
+        clean(vis=msname, imagename=imagename + ".vispol", niter=0, weighting="briggs", robust=0,
               imsize=[512, 512], cell=["500 arcsec"], mode="mfs", nterms=1,
               spw=spw, stokes="XXYY")
 
         # export images to FITS
-        stokes_imname = imagename + ".image"
-        vispol_imname = vispolimname + ".image"
+        stokes_imname = imagename + ".stokpol.image"
+        vispol_imname = vispolimname + ".vispol.image"
         stokes_fits = stokes_imname + ".fits"
         vispol_fits = vispol_imname + ".fits"
         print("exporting to FITS...")
