@@ -78,7 +78,8 @@ if __name__ == "__main__":
                                           model_is_redundant=True)
 
     # construct model and residual
-    mod, res = copy.deepcopy(uvd), copy.deepcopy(uvd)
+    mod = uvd
+    res = copy.deepcopy(uvd)
     for blp in data_bls:
         # get indices in data
         bltinds = mod.antpair2ind(blp)
