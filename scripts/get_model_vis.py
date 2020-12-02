@@ -13,6 +13,7 @@ ap = argparse.ArgumentParser(description='Match model vis to data file, and writ
 ap.add_argument("filename", type=str, help="Filename to image")
 ap.add_argument("model_vis", type=str, help="glob-parseable path to model visibilities")
 ap.add_argument("outdir", type=str, help="Output directory to write model file to")
+ap.add_argument("--model_not_redundant",  default=False, action="store_true", help="model_vis files contain all baselin3s, not just unique ones")
 
 if __name__ == "__main__":
 
@@ -71,7 +72,7 @@ if __name__ == "__main__":
     model_antpos, model_ants = uvm.get_ENU_antpos()
     model_antpos_dict = dict(zip(model_ants, model_antpos))
     _, _, d2m = hc.abscal.match_baselines(data_bls, model_bls, data_antpos_dict, model_antpos_dict,
-                                          model_is_redundant=True)
+                                          model_is_redundant=(not a.model_not_redundant))
 
     # construct model and residual
     mod, res = copy.deepcopy(uvd), copy.deepcopy(uvd)
