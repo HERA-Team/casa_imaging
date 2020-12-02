@@ -60,14 +60,12 @@ if __name__ == "__main__":
     if len(model_files) == 0:
         sys.exit(0)
 
-    # load model
+    # load model for selected times only
     uvm = UVData()
-    uvm.read(model_files)
-
-    # down select on lsts
+    uvm.read(model_files, read_data=False)
     uvm_lsts = np.unwrap(np.unique(uvm.lst_array))
     tinds = (uvm_lsts > lst_bounds[0]) & (uvm_lsts < lst_bounds[1])
-    uvm.select(times=np.unique(uvm.time_array)[tinds])
+    uvm.read(model_files, times=np.unique(uvm.time_array)[tinds])
 
     # expand to data baselines
     data_bls = uvd.get_antpairpols()
