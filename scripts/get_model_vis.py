@@ -13,7 +13,7 @@ ap = argparse.ArgumentParser(description='Match model vis to data file, and writ
 ap.add_argument("filename", type=str, help="Filename to image")
 ap.add_argument("model_vis", type=str, help="glob-parseable path to model visibilities")
 ap.add_argument("outdir", type=str, help="Output directory to write model file to")
-ap.add_argument("--model_not_redundant",  default=False, action="store_true", help="model_vis files contain all baselin3s, not just unique ones")
+ap.add_argument("--model_not_redundant",  default=False, action="store_true", help="model_vis files contain all baselines, not just unique ones")
 
 if __name__ == "__main__":
 
