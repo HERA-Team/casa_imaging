@@ -22,7 +22,13 @@ if __name__ == "__main__":
     # load filename metadata
     uvd = UVData()
     uvd.read(a.filename, read_data=True)
-    lst_bounds = [uvd.lst_array.min(), uvd.lst_array.max()]
+    dlst = np.median(np.diff(np.unwrap(np.unique(uvd.lst_array))))
+    lst_bounds = [uvd.lst_array.min() - dlst / 2, uvd.lst_array.max() + dlst / 2]
+    # handle branch cut appropriately
+    if lst_bounds[0] < 0:
+        lst_bounds[0] += 2*np.pi
+    if lst_bounds[1] > 2*np.pi:
+        lst_bounds[1] -= 2*np.pi
     if lst_bounds[1] < lst_bounds[0]:
         lst_bounds[1] += 2*np.pi
 
@@ -60,7 +66,7 @@ if __name__ == "__main__":
 
     # down select on lsts
     uvm_lsts = np.unwrap(np.unique(uvm.lst_array))
-    tinds = (uvm_lsts >= lst_bounds[0]) & (uvm_lsts <= lst_bounds[1])
+    tinds = (uvm_lsts > lst_bounds[0]) & (uvm_lsts < lst_bounds[1])
     uvm.select(times=np.unique(uvm.time_array)[tinds])
 
     # expand to data baselines
