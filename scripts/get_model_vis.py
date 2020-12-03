@@ -71,4 +71,4 @@ if __name__ == "__main__":
         hd.update(data=data)
         hd.phase_to_time(np.median(hd.time_array))
         outname = os.path.basename(filename).replace('uvh5', f'{out}.uvfits')
-        hd.write_uvfits(os.path.join(.outdir, outname), spoof_nonessential=True)
+        hd.write_uvfits(os.path.join(a.outdir, outname), spoof_nonessential=True)
