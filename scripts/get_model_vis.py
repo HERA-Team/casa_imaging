@@ -64,8 +64,8 @@ if __name__ == "__main__":
 
     # update data to make model or residual, then write to disk
     for out in ['model', 'res']:
-        hd = HERAData(a.filename, times=data_times_to_load)
-        data, _, _ = hd.read(bls=data_bl_to_load)
+        hd = HERAData(a.filename)
+        data, _, _ = hd.read(bls=data_bl_to_load, times=data_times_to_load)
         lst_rephase(model, model_blvecs, model.freqs, data.lsts - model.lsts,
                     lat=hdm.telescope_location_lat_lon_alt_degrees[0], inplace=True)
         for bl in data:
