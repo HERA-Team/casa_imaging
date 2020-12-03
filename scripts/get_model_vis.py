@@ -55,13 +55,14 @@ if __name__ == "__main__":
      data_to_model_bl_map) = match_baselines(hd.bls, model_bls, hd.antpos, model_antpos=model_antpos, tol=1.0,
                                              data_is_redsol=False, model_is_redundant=(not a.model_not_redundant))
 
-    # load model (just the times of interest)
-    model_times_to_load = [d2m_time_map[time] for time in hd.times]
+    # load model (just the times of interest) and get times in data that have a corresponding time in the model
+    model_times_to_load = [d2m_time_map[time] for time in hd.times if d2m_time_map[time] is not None]
+    data_times_to_load = [time for time in hd.times if d2m_time_map[time] is not None]
     model, _, _ = partial_time_io(hdm, np.unique(model_times_to_load), bls=model_bl_to_load)
 
     # update data to make model or residual, then write to disk
     for out in ['model', 'res']:
-        hd = HERAData(a.filename)
+        hd = HERAData(a.filename, times=data_times_to_load)
         data, _, _ = hd.read(bls=data_bl_to_load)
         for bl in data:
             if out == 'model':
