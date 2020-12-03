@@ -4,36 +4,23 @@ import argparse
 import glob
 import os
 import sys
-import hera_cal as hc
+from hera_cal.io import HERAData, partial_time_io
+from hera_cal.abscal import get_all_times_and_lsts, get_d2m_time_map, match_times, match_baselines
 import copy
-
 
 ap = argparse.ArgumentParser(description='Match model vis to data file, and write model and its residual.')
 
 ap.add_argument("filename", type=str, help="Filename to image")
-ap.add_argument("model_vis", type=str, help="glob-parseable path to model visibilities")
+ap.add_argument("model_vis", type=str, help="glob-parseable path to model visibilities in uvh5 format")
 ap.add_argument("outdir", type=str, help="Output directory to write model file to")
-ap.add_argument("--model_not_redundant",  default=False, action="store_true", help="model_vis files contain all baselin3s, not just unique ones")
+ap.add_argument("--model_not_redundant", default=False, action="store_true", help="model_vis files contain all baselines, not just unique ones")
 
 if __name__ == "__main__":
 
     # parse args
     a = ap.parse_args()
 
-    # load filename metadata
-    uvd = UVData()
-    uvd.read(a.filename, read_data=True)
-    dlst = np.median(np.diff(np.unwrap(np.unique(uvd.lst_array))))
-    lst_bounds = [uvd.lst_array.min() - dlst / 2, uvd.lst_array.max() + dlst / 2]
-    # handle branch cut appropriately
-    if lst_bounds[0] < 0:
-        lst_bounds[0] += 2*np.pi
-    if lst_bounds[1] > 2*np.pi:
-        lst_bounds[1] -= 2*np.pi
-    if lst_bounds[1] < lst_bounds[0]:
-        lst_bounds[1] += 2*np.pi
-
-    # get model visibilities
+    # get model visibilitity file list
     if a.model_vis is None:
         sys.exit(0)
     a.model_vis = a.model_vis.strip("'")  # somtimes it has extra quotes
@@ -41,68 +28,47 @@ if __name__ == "__main__":
     if len(mfiles) == 0:
         sys.exit(0)
 
-    # get metadata
-    mfile_lsts = []
-    for mf in mfiles:
-        uvm = UVData()
-        uvm.read(mf, read_data=False)
-        mfile_lsts.append([uvm.lst_array.min(), uvm.lst_array.max()])
-    mfile_lsts = np.unwrap(mfile_lsts, axis=0)
-    if mfile_lsts[0, 1] < mfile_lsts[0, 0]:
-        mfile_lsts[:, 1] += 2*np.pi
-    if mfile_lsts.min() > lst_bounds[1]:
-        mfile_lsts -= 2*np.pi
-
-    # get files that overlap filename
-    model_files = []
-    for i, mf_lst in enumerate(mfile_lsts):
-        if mf_lst[1] > lst_bounds[0] and mf_lst[0] < lst_bounds[1]:
-            model_files.append(mfiles[i])
-    if len(model_files) == 0:
+    # get lst-matched model files from mfiles
+    matched_model_files = sorted(set(match_times(a.filename, mfiles, filetype='uvh5')))
+    if len(matched_model_files) == 0:
         sys.exit(0)
 
-    # load model
-    uvm = UVData()
-    uvm.read(model_files)
+    # load data and model metadata
+    hd = HERAData(a.filename)
+    hdm = HERAData(matched_model_files)
 
-    # down select on lsts
-    uvm_lsts = np.unwrap(np.unique(uvm.lst_array))
-    tinds = (uvm_lsts >= lst_bounds[0]) & (uvm_lsts <= lst_bounds[1])
-    uvm.select(times=np.unique(uvm.time_array)[tinds])
+    # get model bls and antpos to use later in baseline matching
+    model_bls = hdm.bls
+    model_antpos = hdm.antpos
+    if len(matched_model_files) > 1:  # in this case, it's a dictionary
+        model_bls = list(set([bl for bls in list(hdm.bls.values()) for bl in bls]))
+        model_antpos = {ant: pos for antpos in hdm.antpos.values() for ant, pos in antpos.items()}
 
-    # expand to data baselines
-    data_bls = uvd.get_antpairpols()
-    data_antpos, data_ants = uvd.get_ENU_antpos()
-    data_antpos_dict = dict(zip(data_ants, data_antpos))
-    model_bls = uvm.get_antpairpols()
-    model_antpos, model_ants = uvm.get_ENU_antpos()
-    model_antpos_dict = dict(zip(model_ants, model_antpos))
-    _, _, d2m = hc.abscal.match_baselines(data_bls, model_bls, data_antpos_dict, model_antpos_dict,
-                                          model_is_redundant=(not a.model_not_redundant))
+    # get corresponding times in the data and model
+    all_data_times, all_data_lsts = get_all_times_and_lsts(hd, unwrap=True)
+    all_model_times, all_model_lsts = get_all_times_and_lsts(hdm, unwrap=True)
+    d2m_time_map = get_d2m_time_map(all_data_times, all_data_lsts, all_model_times, all_model_lsts, extrap_limit=.5)
 
-    # construct model and residual
-    mod = uvd
-    res = copy.deepcopy(uvd)
-    for blp in data_bls:
-        # get indices in data
-        bltinds = mod.antpair2ind(blp)
-        pol_int = uvutils.polstr2num(blp[2], x_orientation=mod.x_orientation)
-        polind = mod.polarization_array.tolist().index(pol_int)
-        # if blp in d2m fill it, otherwise flag it
-        if blp in d2m:
-            mblp = d2m[blp]
-            mod.data_array[bltinds, 0, :, polind] = uvm.get_data(mblp)
-            res.data_array[bltinds, 0, :, polind] -= uvm.get_data(mblp)
-        else:
-            mod.flag_array[bltinds, 0, :, polind] = True
-            res.flag_array[bltinds, 0, :, polind] = True
+    # get matching baselines in the data and model
+    (data_bl_to_load,
+     model_bl_to_load,
+     data_to_model_bl_map) = match_baselines(hd.bls, model_bls, hd.antpos, model_antpos=model_antpos, tol=1.0,
+                                             data_is_redsol=False, model_is_redundant=(not a.model_not_redundant))
 
-    # phase the data
-    mod.phase_to_time(np.median(mod.time_array))
-    res.phase_to_time(np.median(res.time_array))
+    # load model (just the times of interest)
+    model_times_to_load = [d2m_time_map[time] for time in hd.times]
+    model, _, _ = partial_time_io(hdm, np.unique(model_times_to_load), bls=model_bl_to_load)
 
-    # write uvfits to outdir
-    outname = os.path.basename(a.filename).replace('uvh5', 'model.uvfits')
-    mod.write_uvfits(os.path.join(a.outdir, outname), spoof_nonessential=True)
-    outname = os.path.basename(a.filename).replace('uvh5', 'res.uvfits')
-    res.write_uvfits(os.path.join(a.outdir, outname), spoof_nonessential=True)
+    # update data to make model or residual, then write to disk
+    for out in ['model', 'res']:
+        hd = HERAData(a.filename)
+        data, _, _ = hd.read(bls=data_bl_to_load)
+        for bl in data:
+            if out == 'model':
+                data[bl] = model[data_to_model_bl_map[bl]]
+            elif out == 'res':
+                data[bl] -= model[data_to_model_bl_map[bl]]
+        hd.update(data=data)
+        hd.phase_to_time(np.median(hd.time_array))
+        outname = os.path.basename(filename).replace('uvh5', f'{out}.uvfits')
+        hd.write_uvfits(os.path.join(.outdir, outname), spoof_nonessential=True)
