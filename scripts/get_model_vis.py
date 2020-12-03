@@ -6,6 +6,7 @@ import os
 import sys
 from hera_cal.io import HERAData, partial_time_io
 from hera_cal.abscal import get_all_times_and_lsts, get_d2m_time_map, match_times, match_baselines
+from hera_cal.utils import lst_rephase
 import copy
 
 ap = argparse.ArgumentParser(description='Match model vis to data file, and write model and its residual.')
@@ -59,11 +60,14 @@ if __name__ == "__main__":
     model_times_to_load = [d2m_time_map[time] for time in hd.times if d2m_time_map[time] is not None]
     data_times_to_load = [time for time in hd.times if d2m_time_map[time] is not None]
     model, _, _ = partial_time_io(hdm, np.unique(model_times_to_load), bls=model_bl_to_load)
+    model_blvecs = {bl: model.antpos[bl[0]] - model.antpos[bl[1]] for bl in model.keys()}
 
     # update data to make model or residual, then write to disk
     for out in ['model', 'res']:
         hd = HERAData(a.filename, times=data_times_to_load)
         data, _, _ = hd.read(bls=data_bl_to_load)
+        lst_rephase(model, model_blvecs, model.freqs, data.lsts - model.lsts,
+                    lat=hdm.telescope_location_lat_lon_alt_degrees[0], inplace=True)
         for bl in data:
             if out == 'model':
                 data[bl] = model[data_to_model_bl_map[bl]]
