@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 from pyuvdata import UVData, utils as uvutils
 import numpy as np
 import argparse
