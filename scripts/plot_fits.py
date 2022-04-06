@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -60,7 +61,7 @@ if __name__ == "__main__":
     fig.subplots_adjust(wspace=0.1)
     # iterate over pol
     for i, pol in enumerate(pols):
-        ax = fig.add_subplot("1{}{}".format(Npols, i+1), projection=wcs)
+        ax = fig.add_subplot(int("1{}{}".format(Npols, i+1)), projection=wcs)
         xax, yax = ax.coords[0], ax.coords[1]
         cax = ax.imshow(data[i, 0], aspect='auto', origin='lower', vmin=vmin[i], vmax=vmax[i], cmap=cmap[i])
         casa_utils.set_xlim(ax, wcs, xlim, center[1])
@@ -82,7 +83,7 @@ if __name__ == "__main__":
         tag = "{} polarization\n{:.1f} MHz".format(pols[i], freq/1e6)
         ax.text(0.03, 0.88, tag, fontsize=15, color='k', transform=ax.transAxes,
                 bbox=dict(boxstyle='square', fc='w', ec='None', alpha=0.8, pad=.2))
- 
+
     fname = os.path.splitext(os.path.basename(a.filename))
     fname = os.path.join(a.outdir, fname[0] + '.png')
     fig.savefig(fname, dpi=100, bbox_inches='tight')
